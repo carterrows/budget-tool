@@ -1,23 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { type FocusEvent, useEffect, useMemo, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   DEFAULT_STATE,
+  MAX_BONUS_AMOUNT,
+  MAX_BONUS_PERCENT,
   MAX_EXPENSE,
-  MAX_INCOME,
   MAX_INVESTMENT,
+  MAX_YEARLY_SALARY,
   calculateTotals,
   sanitizeBudgetState
 } from "@/lib/budget-state";
-import type { BudgetFrequency, BudgetState, InvestmentState } from "@/lib/types";
+import type { BonusType, BudgetFrequency, BudgetState, InvestmentState } from "@/lib/types";
 
 type Action =
   | { type: "replace"; state: BudgetState }
-  | { type: "set-income"; amount: number }
+  | { type: "set-yearly-salary"; amount: number }
+  | { type: "set-bonus-type"; bonusType: BonusType }
+  | { type: "set-bonus-value"; amount: number }
   | {
       type: "set-frequency";
-      section: "income" | "investments";
+      section: "investments";
       frequency: BudgetFrequency;
     }
   | { type: "add-expense" }
@@ -50,17 +54,43 @@ const clamp = (value: number, min: number, max: number) =>
 const normalizeMoney = (value: number, max: number) =>
   Math.round(clamp(value, 0, max) * 100) / 100;
 
-const frequencyLabel = (frequency: BudgetFrequency) =>
-  frequency === "bi-weekly" ? "Bi-weekly" : "Monthly";
+const selectInputValueOnFocus = (event: FocusEvent<HTMLInputElement>) => {
+  const currentValue = toNumber(event.currentTarget.value);
+  if (currentValue === 0) {
+    event.currentTarget.select();
+  }
+};
 
 const reducer = (state: BudgetState, action: Action): BudgetState => {
   switch (action.type) {
     case "replace":
       return sanitizeBudgetState(action.state);
-    case "set-income":
+    case "set-yearly-salary":
       return {
         ...state,
-        income: normalizeMoney(action.amount, MAX_INCOME)
+        yearlySalary: normalizeMoney(action.amount, MAX_YEARLY_SALARY)
+      };
+    case "set-bonus-type":
+      const nextBonusValue =
+        action.bonusType === "amount"
+          ? normalizeMoney(state.bonusValue, MAX_BONUS_AMOUNT)
+          : action.bonusType === "percentage"
+            ? normalizeMoney(state.bonusValue, MAX_BONUS_PERCENT)
+            : 0;
+      return {
+        ...state,
+        bonusType: action.bonusType,
+        bonusValue: nextBonusValue
+      };
+    case "set-bonus-value":
+      return {
+        ...state,
+        bonusValue:
+          state.bonusType === "amount"
+            ? normalizeMoney(action.amount, MAX_BONUS_AMOUNT)
+            : state.bonusType === "percentage"
+              ? normalizeMoney(action.amount, MAX_BONUS_PERCENT)
+              : 0
       };
     case "set-frequency":
       return {
@@ -156,8 +186,54 @@ function SliderMoneyField({ id, label, value, max, onChange }: SliderMoneyFieldP
             step={1}
             value={value}
             onChange={(event) => onChange(toNumber(event.target.value))}
+            onFocus={selectInputValueOnFocus}
             className="input tabular-nums pl-7 pr-3 text-right"
           />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type SliderPercentFieldProps = {
+  id: string;
+  label: string;
+  value: number;
+  max: number;
+  onChange: (value: number) => void;
+};
+
+function SliderPercentField({ id, label, value, max, onChange }: SliderPercentFieldProps) {
+  return (
+    <div className="space-y-2">
+      <label htmlFor={id} className="text-sm font-medium text-forest-800">
+        {label}
+      </label>
+      <div className="grid gap-3 md:grid-cols-[1fr_140px]">
+        <input
+          id={id}
+          type="range"
+          min={0}
+          max={max}
+          step={0.1}
+          value={value}
+          onChange={(event) => onChange(toNumber(event.target.value))}
+          className="w-full accent-forest-700"
+        />
+        <div className="relative">
+          <input
+            type="number"
+            min={0}
+            max={max}
+            step={0.1}
+            value={value}
+            onChange={(event) => onChange(toNumber(event.target.value))}
+            onFocus={selectInputValueOnFocus}
+            className="input tabular-nums pl-3 pr-8 text-right"
+          />
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
+            %
+          </span>
         </div>
       </div>
     </div>
@@ -359,27 +435,54 @@ export default function BudgetApp({ username }: BudgetAppProps) {
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-6">
           <section className="card space-y-4 p-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold">Income</h2>
-              <FrequencySelect
-                id="income-frequency"
-                value={state.frequencies.income}
-                onChange={(frequency) =>
+            <h2 className="text-xl font-semibold">Income</h2>
+            <SliderMoneyField
+              id="yearly-salary"
+              label="Yearly Salary (CAD)"
+              value={state.yearlySalary}
+              max={MAX_YEARLY_SALARY}
+              onChange={(amount) => safeDispatch({ type: "set-yearly-salary", amount })}
+            />
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <label htmlFor="bonus-type" className="text-sm font-medium text-forest-800">
+                  Year-end Bonus
+                </label>
+              <select
+                id="bonus-type"
+                value={state.bonusType}
+                onChange={(event) =>
                   safeDispatch({
-                    type: "set-frequency",
-                    section: "income",
-                    frequency
+                    type: "set-bonus-type",
+                    bonusType: event.target.value as BonusType
                   })
                 }
-              />
+                className="input h-10 min-w-[220px] py-0 pr-8 md:w-[260px]"
+              >
+                <option value="none">No bonus</option>
+                <option value="amount">Dollar amount</option>
+                <option value="percentage">Percentage of salary</option>
+              </select>
+              </div>
             </div>
-            <SliderMoneyField
-              id="income"
-              label={`${frequencyLabel(state.frequencies.income)} Income (CAD)`}
-              value={state.income}
-              max={MAX_INCOME}
-              onChange={(amount) => safeDispatch({ type: "set-income", amount })}
-            />
+            {state.bonusType === "amount" ? (
+              <SliderMoneyField
+                id="bonus-amount"
+                label="Bonus Amount (CAD)"
+                value={state.bonusValue}
+                max={MAX_BONUS_AMOUNT}
+                onChange={(amount) => safeDispatch({ type: "set-bonus-value", amount })}
+              />
+            ) : null}
+            {state.bonusType === "percentage" ? (
+              <SliderPercentField
+                id="bonus-percent"
+                label="Bonus Percentage"
+                value={state.bonusValue}
+                max={MAX_BONUS_PERCENT}
+                onChange={(amount) => safeDispatch({ type: "set-bonus-value", amount })}
+              />
+            ) : null}
           </section>
 
           <section className="card space-y-4 p-6">
@@ -474,6 +577,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                             amount: toNumber(event.target.value)
                           })
                         }
+                        onFocus={selectInputValueOnFocus}
                         className="input tabular-nums pl-7 pr-3 text-right"
                       />
                     </div>
