@@ -9,10 +9,18 @@ services:
       PORT: 4050
       HOSTNAME: 0.0.0.0
       DATABASE_PATH: /data/budget.db
-      ALLOW_SIGNUP: "true"
+      ALLOW_SIGNUP: "false"
       SECURE_COOKIES: "true"
+      API_RATE_LIMIT_WINDOW_MS: "60000"
+      API_RATE_LIMIT_GENERAL_MAX: "120"
+      API_RATE_LIMIT_AUTH_MAX: "15"
     ports:
       - "127.0.0.1:4050:4050"
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     volumes:
       - budget_data:/data
     restart: unless-stopped
