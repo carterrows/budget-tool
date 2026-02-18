@@ -12,6 +12,7 @@ import {
   calculateTotals,
   sanitizeBudgetState
 } from "@/lib/budget-state";
+import { calculateOntarioNetIncomeFromInput } from "@/lib/tax";
 import type { BonusType, BudgetFrequency, BudgetState, InvestmentState } from "@/lib/types";
 
 type Action =
@@ -276,6 +277,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   const [hasPendingEdits, setHasPendingEdits] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isIncomeHelpOpen, setIsIncomeHelpOpen] = useState(false);
 
   const safeDispatch = (action: Action) => {
     setHasPendingEdits(true);
@@ -372,7 +374,47 @@ export default function BudgetApp({ username }: BudgetAppProps) {
     };
   }, [state, initialized, hasPendingEdits]);
 
+  useEffect(() => {
+    if (!isIncomeHelpOpen) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsIncomeHelpOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isIncomeHelpOpen]);
+
+  useEffect(() => {
+    if (!isIncomeHelpOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isIncomeHelpOpen]);
+
   const totals = useMemo(() => calculateTotals(state), [state]);
+  const incomeBreakdown = useMemo(
+    () =>
+      calculateOntarioNetIncomeFromInput({
+        yearlySalary: state.yearlySalary,
+        bonusType: state.bonusType,
+        bonusValue: state.bonusValue
+      }),
+    [state.yearlySalary, state.bonusType, state.bonusValue]
+  );
 
   const logout = async () => {
     setIsLoggingOut(true);
@@ -435,7 +477,20 @@ export default function BudgetApp({ username }: BudgetAppProps) {
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-6">
           <section className="card space-y-4 p-6">
-            <h2 className="text-xl font-semibold">Income</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold">Income</h2>
+              <button
+                type="button"
+                onClick={() => setIsIncomeHelpOpen(true)}
+                aria-label="How net income is calculated"
+                title="How net income is calculated"
+                className="btn-secondary h-9 w-9 px-0 py-0 leading-none"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                  question_mark
+                </span>
+              </button>
+            </div>
             <SliderMoneyField
               id="yearly-salary"
               label="Yearly Salary (CAD)"
@@ -448,21 +503,21 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                 <label htmlFor="bonus-type" className="text-sm font-medium text-forest-800">
                   Year-end Bonus
                 </label>
-              <select
-                id="bonus-type"
-                value={state.bonusType}
-                onChange={(event) =>
-                  safeDispatch({
-                    type: "set-bonus-type",
-                    bonusType: event.target.value as BonusType
-                  })
-                }
-                className="input h-10 min-w-[220px] py-0 pr-8 md:w-[260px]"
-              >
-                <option value="none">No bonus</option>
-                <option value="amount">Dollar amount</option>
-                <option value="percentage">Percentage of salary</option>
-              </select>
+                <select
+                  id="bonus-type"
+                  value={state.bonusType}
+                  onChange={(event) =>
+                    safeDispatch({
+                      type: "set-bonus-type",
+                      bonusType: event.target.value as BonusType
+                    })
+                  }
+                  className="input h-10 min-w-[220px] py-0 pr-8 md:w-[260px]"
+                >
+                  <option value="none">No bonus</option>
+                  <option value="amount">Dollar amount</option>
+                  <option value="percentage">Percentage of salary</option>
+                </select>
               </div>
             </div>
             {state.bonusType === "amount" ? (
@@ -483,6 +538,14 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                 onChange={(amount) => safeDispatch({ type: "set-bonus-value", amount })}
               />
             ) : null}
+            <div className="rounded-xl border border-forest-200/80 bg-paper/55 p-4">
+              <p className="caps-label text-xs font-semibold uppercase text-forest-600">
+                Yearly Net Income (After Tax + Deductions)
+              </p>
+              <p className="tabular-nums mt-2 text-2xl font-semibold text-forest-700">
+                {cad.format(incomeBreakdown.annualNetIncome)}
+              </p>
+            </div>
           </section>
 
           <section className="card space-y-4 p-6">
@@ -639,6 +702,12 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           <p className="mt-1 text-xs text-forest-700/75">All totals shown as monthly equivalents.</p>
           <div className="mt-4 space-y-4">
             <div className="flex items-center justify-between text-sm">
+              <span className="text-forest-700/90">Monthly net income</span>
+              <span className="tabular-nums font-semibold text-forest-900">
+                {cad.format(totals.monthlyIncome)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
               <span className="text-forest-700/90">Total expenses</span>
               <span className="tabular-nums font-semibold text-forest-900">
                 {cad.format(totals.totalExpenses)}
@@ -663,6 +732,104 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           </div>
         </aside>
       </div>
+
+      {isIncomeHelpOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-forest-900/25 p-4 backdrop-blur-sm"
+          onClick={() => setIsIncomeHelpOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="income-help-title"
+        >
+          <article
+            className="card w-full max-w-3xl p-6 md:p-8"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="caps-label text-xs font-semibold uppercase text-forest-600">
+                  Income Calculator
+                </p>
+                <h3 id="income-help-title" className="mt-1 text-2xl font-semibold">
+                  Ontario After-Tax Income (2026)
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsIncomeHelpOpen(false)}
+                className="btn-secondary h-9 px-3 py-0 text-sm"
+              >
+                Close
+              </button>
+            </div>
+
+            <p className="mt-3 text-sm text-forest-700/85">
+              Monthly income is calculated from annual salary + bonus, then reduced by
+              federal/provincial tax and mandatory CPP/EI deductions.
+            </p>
+
+            <div className="mt-6 grid gap-3 rounded-xl border border-forest-200 bg-paper/55 p-4 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Annual salary</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(incomeBreakdown.annualSalary)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Annual bonus</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(incomeBreakdown.annualBonus)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-t border-forest-200/80 pt-3">
+                <span className="text-forest-700/90">Gross annual income</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(incomeBreakdown.annualGrossIncome)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Federal income tax</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(incomeBreakdown.federalTax)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Ontario income tax</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(incomeBreakdown.provincialTax)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">CPP contribution</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(incomeBreakdown.cppContribution)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">EI premium</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(incomeBreakdown.eiPremium)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-t border-forest-200/80 pt-3">
+                <span className="text-forest-700/90">Total annual deductions</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(incomeBreakdown.totalDeductions)}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-xl border border-forest-300/70 bg-gradient-to-br from-forest-50 via-paper to-white p-4">
+              <p className="caps-label text-xs font-semibold uppercase text-forest-600">
+                Monthly Net Income Used In Budget
+              </p>
+              <p className="tabular-nums mt-2 text-3xl font-semibold text-forest-700">
+                {cad.format(incomeBreakdown.monthlyNetIncome)}
+              </p>
+            </div>
+          </article>
+        </div>
+      ) : null}
     </section>
   );
 }

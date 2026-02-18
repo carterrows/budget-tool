@@ -1,4 +1,5 @@
 import type { BonusType, BudgetFrequency, BudgetState, ExpenseItem } from "./types";
+import { calculateOntarioNetIncomeFromInput } from "./tax";
 
 export const MAX_YEARLY_SALARY = 500_000;
 export const MAX_BONUS_AMOUNT = 100_000;
@@ -136,19 +137,12 @@ export const sanitizeBudgetState = (input: unknown): BudgetState => {
 const toMonthlyAmount = (amount: number, frequency: BudgetFrequency) =>
   frequency === "bi-weekly" ? (amount * 26) / 12 : amount;
 
-const toYearlyIncomeWithBonus = (state: BudgetState) => {
-  const yearlyBonus =
-    state.bonusType === "amount"
-      ? state.bonusValue
-      : state.bonusType === "percentage"
-        ? (state.yearlySalary * state.bonusValue) / 100
-        : 0;
-
-  return state.yearlySalary + yearlyBonus;
-};
-
 export const calculateTotals = (state: BudgetState) => {
-  const monthlyIncome = toYearlyIncomeWithBonus(state) / 12;
+  const monthlyIncome = calculateOntarioNetIncomeFromInput({
+    yearlySalary: state.yearlySalary,
+    bonusType: state.bonusType,
+    bonusValue: state.bonusValue
+  }).monthlyNetIncome;
   const totalExpenses = state.expenses.reduce(
     (sum, row) => sum + toMonthlyAmount(row.amount, row.frequency),
     0
