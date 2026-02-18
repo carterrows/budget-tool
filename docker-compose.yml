@@ -9,7 +9,7 @@ services:
       PORT: 4050
       HOSTNAME: 0.0.0.0
       DATABASE_PATH: /data/budget.db
-      ALLOW_SIGNUP: "true"
+      ALLOW_SIGNUP: "false"
       SECURE_COOKIES: "true"
       API_RATE_LIMIT_WINDOW_MS: "60000"
       API_RATE_LIMIT_GENERAL_MAX: "120"
