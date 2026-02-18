@@ -1,0 +1,34 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+
+# build outputs
+build/
+coverage/
+*.tsbuildinfo
+
+# local data
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# environment files
+.env*
+!.env.example
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# local tooling cache
+.npm-cache/
+
+# misc
+.DS_Store
+.vercel/

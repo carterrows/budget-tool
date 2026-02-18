@@ -88,7 +88,8 @@ export const getUserFromSessionToken = (token: string): AuthUser | null => {
 };
 
 export const getCurrentUser = async (): Promise<AuthUser | null> => {
-  const token = cookies().get(SESSION_COOKIE_NAME)?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
   if (!token) {
     return null;
@@ -97,7 +98,10 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
   return getUserFromSessionToken(token);
 };
 
-export const getCurrentSessionToken = () => cookies().get(SESSION_COOKIE_NAME)?.value ?? null;
+export const getCurrentSessionToken = async () => {
+  const cookieStore = await cookies();
+  return cookieStore.get(SESSION_COOKIE_NAME)?.value ?? null;
+};
 
 export const setSessionCookie = (response: NextResponse, token: string, expiresAt: Date) => {
   response.cookies.set({
