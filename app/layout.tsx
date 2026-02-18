@@ -4,7 +4,10 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Budget Tool",
-  description: "Self-hosted personal budgeting app"
+  description: "Self-hosted personal budgeting app",
+  icons: {
+    icon: "/favicon.svg"
+  }
 };
 
 export default function RootLayout({

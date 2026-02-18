@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Budget app favicon" viewBox="8 8 240 240">
+  <!-- Background circle -->
+  <circle cx="128" cy="128" r="120" fill="#06402b"/>
+
+  <!-- Centered bold dollar sign -->
+  <text x="128" y="128" text-anchor="middle" dominant-baseline="middle" dy="0.08em" font-size="150" font-weight="800" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" fill="#F7F5F2">
+    $
+  </text>
+</svg>
