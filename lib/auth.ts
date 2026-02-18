@@ -7,6 +7,8 @@ import { getDb } from "./db";
 export const SESSION_COOKIE_NAME = "budget_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const USE_SECURE_COOKIES = process.env.SECURE_COOKIES === "true";
+const DEV_USERNAME_PATTERN = /^[a-z0-9_-]{3,32}$/;
+const DEFAULT_DEV_USERNAME = "dev-user";
 
 export type AuthUser = {
   id: number;
@@ -30,10 +32,55 @@ const deleteExpiredSessions = () => {
 
 export const normalizeUsername = (input: string) => input.trim().toLowerCase();
 
+export const isDevLoginEnabled = () =>
+  process.env.NODE_ENV !== "production" && process.env.DEV_LOGIN_ENABLED !== "false";
+
+export const getDevLoginUsername = () => {
+  const configured = normalizeUsername(process.env.DEV_LOGIN_USERNAME ?? DEFAULT_DEV_USERNAME);
+  return DEV_USERNAME_PATTERN.test(configured) ? configured : DEFAULT_DEV_USERNAME;
+};
+
 export const hashPassword = async (password: string) => bcrypt.hash(password, 12);
 
 export const verifyPassword = async (password: string, hash: string) =>
   bcrypt.compare(password, hash);
+
+export const getOrCreateDevUser = async (): Promise<AuthUser> => {
+  const db = getDb();
+  const username = getDevLoginUsername();
+
+  const existing = db
+    .prepare("SELECT id, username FROM users WHERE username = ? LIMIT 1")
+    .get(username) as AuthUser | undefined;
+
+  if (existing) {
+    return existing;
+  }
+
+  const passwordHash = await hashPassword(randomBytes(24).toString("hex"));
+  const createdAt = nowIso();
+
+  try {
+    const insert = db
+      .prepare("INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)")
+      .run(username, passwordHash, createdAt);
+
+    return {
+      id: Number(insert.lastInsertRowid),
+      username
+    };
+  } catch {
+    const user = db
+      .prepare("SELECT id, username FROM users WHERE username = ? LIMIT 1")
+      .get(username) as AuthUser | undefined;
+
+    if (!user) {
+      throw new Error("Unable to create development user.");
+    }
+
+    return user;
+  }
+};
 
 export const createSession = (userId: number) => {
   deleteExpiredSessions();
