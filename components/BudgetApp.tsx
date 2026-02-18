@@ -105,7 +105,7 @@ const reducer = (state: BudgetState, action: Action): BudgetState => {
     case "add-expense":
       return {
         ...state,
-        expenses: [...state.expenses, { name: "Expense", amount: 0, frequency: "monthly" }]
+        expenses: [{ name: "Expense", amount: 0, frequency: "monthly" }, ...state.expenses]
       };
     case "remove-expense":
       if (state.expenses.length <= 1) {
