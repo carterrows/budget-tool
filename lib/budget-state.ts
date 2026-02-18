@@ -1,4 +1,4 @@
-import type { BudgetState, ExpenseItem } from "./types";
+import type { BudgetFrequency, BudgetState, ExpenseItem } from "./types";
 
 export const MAX_INCOME = 20000;
 export const MAX_EXPENSE = 10000;
@@ -6,11 +6,15 @@ export const MAX_INVESTMENT = 10000;
 
 export const DEFAULT_STATE: BudgetState = {
   income: 0,
-  expenses: [{ name: "Expense", amount: 0 }],
+  expenses: [{ name: "Expense", amount: 0, frequency: "monthly" }],
   investments: {
     tfsa: 0,
     fhsa: 0,
     rrsp: 0
+  },
+  frequencies: {
+    income: "monthly",
+    investments: "monthly"
   }
 };
 
@@ -35,7 +39,13 @@ const toNumber = (value: unknown) => {
 const normalizeAmount = (value: unknown, max: number) =>
   roundMoney(clamp(toNumber(value), 0, max));
 
-const normalizeExpense = (value: unknown): ExpenseItem | null => {
+const normalizeFrequency = (value: unknown): BudgetFrequency =>
+  value === "bi-weekly" ? "bi-weekly" : "monthly";
+
+const normalizeExpense = (
+  value: unknown,
+  fallbackFrequency: BudgetFrequency
+): ExpenseItem | null => {
   if (!value || typeof value !== "object") {
     return null;
   }
@@ -45,7 +55,8 @@ const normalizeExpense = (value: unknown): ExpenseItem | null => {
 
   return {
     name: name.trim(),
-    amount: normalizeAmount(candidate.amount, MAX_EXPENSE)
+    amount: normalizeAmount(candidate.amount, MAX_EXPENSE),
+    frequency: normalizeFrequency(candidate.frequency ?? fallbackFrequency)
   };
 };
 
@@ -57,15 +68,20 @@ export const sanitizeBudgetState = (input: unknown): BudgetState => {
   const candidate = input as Partial<BudgetState>;
   const expensesRaw = Array.isArray(candidate.expenses) ? candidate.expenses : [];
 
+  const investmentsRaw = candidate.investments ?? {};
+  const frequenciesRaw =
+    candidate.frequencies && typeof candidate.frequencies === "object"
+      ? (candidate.frequencies as Record<string, unknown>)
+      : {};
+  const defaultExpenseFrequency = normalizeFrequency(frequenciesRaw.expenses);
+
   const expenses = expensesRaw
-    .map(normalizeExpense)
+    .map((expense) => normalizeExpense(expense, defaultExpenseFrequency))
     .filter((item): item is ExpenseItem => item !== null);
 
   if (expenses.length === 0) {
-    expenses.push({ name: "Expense", amount: 0 });
+    expenses.push({ name: "Expense", amount: 0, frequency: defaultExpenseFrequency });
   }
-
-  const investmentsRaw = candidate.investments ?? {};
 
   return {
     income: normalizeAmount(candidate.income, MAX_INCOME),
@@ -83,18 +99,32 @@ export const sanitizeBudgetState = (input: unknown): BudgetState => {
         (investmentsRaw as Record<string, unknown>).rrsp,
         MAX_INVESTMENT
       )
+    },
+    frequencies: {
+      income: normalizeFrequency(frequenciesRaw.income),
+      investments: normalizeFrequency(frequenciesRaw.investments)
     }
   };
 };
 
+const toMonthlyAmount = (amount: number, frequency: BudgetFrequency) =>
+  frequency === "bi-weekly" ? (amount * 26) / 12 : amount;
+
 export const calculateTotals = (state: BudgetState) => {
-  const totalExpenses = state.expenses.reduce((sum, row) => sum + row.amount, 0);
+  const monthlyIncome = toMonthlyAmount(state.income, state.frequencies.income);
+  const totalExpenses = state.expenses.reduce(
+    (sum, row) => sum + toMonthlyAmount(row.amount, row.frequency),
+    0
+  );
   const totalInvestments =
-    state.investments.tfsa + state.investments.fhsa + state.investments.rrsp;
+    toMonthlyAmount(state.investments.tfsa, state.frequencies.investments) +
+    toMonthlyAmount(state.investments.fhsa, state.frequencies.investments) +
+    toMonthlyAmount(state.investments.rrsp, state.frequencies.investments);
 
   return {
+    monthlyIncome: roundMoney(monthlyIncome),
     totalExpenses: roundMoney(totalExpenses),
     totalInvestments: roundMoney(totalInvestments),
-    leftover: roundMoney(state.income - totalExpenses - totalInvestments)
+    leftover: roundMoney(monthlyIncome - totalExpenses - totalInvestments)
   };
 };

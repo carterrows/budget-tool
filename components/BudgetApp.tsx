@@ -10,15 +10,21 @@ import {
   calculateTotals,
   sanitizeBudgetState
 } from "@/lib/budget-state";
-import type { BudgetState, InvestmentState } from "@/lib/types";
+import type { BudgetFrequency, BudgetState, InvestmentState } from "@/lib/types";
 
 type Action =
   | { type: "replace"; state: BudgetState }
   | { type: "set-income"; amount: number }
+  | {
+      type: "set-frequency";
+      section: "income" | "investments";
+      frequency: BudgetFrequency;
+    }
   | { type: "add-expense" }
   | { type: "remove-expense"; index: number }
   | { type: "set-expense-name"; index: number; name: string }
   | { type: "set-expense-amount"; index: number; amount: number }
+  | { type: "set-expense-frequency"; index: number; frequency: BudgetFrequency }
   | {
       type: "set-investment";
       field: keyof InvestmentState;
@@ -44,6 +50,9 @@ const clamp = (value: number, min: number, max: number) =>
 const normalizeMoney = (value: number, max: number) =>
   Math.round(clamp(value, 0, max) * 100) / 100;
 
+const frequencyLabel = (frequency: BudgetFrequency) =>
+  frequency === "bi-weekly" ? "Bi-weekly" : "Monthly";
+
 const reducer = (state: BudgetState, action: Action): BudgetState => {
   switch (action.type) {
     case "replace":
@@ -53,10 +62,18 @@ const reducer = (state: BudgetState, action: Action): BudgetState => {
         ...state,
         income: normalizeMoney(action.amount, MAX_INCOME)
       };
+    case "set-frequency":
+      return {
+        ...state,
+        frequencies: {
+          ...state.frequencies,
+          [action.section]: action.frequency
+        }
+      };
     case "add-expense":
       return {
         ...state,
-        expenses: [...state.expenses, { name: "Expense", amount: 0 }]
+        expenses: [...state.expenses, { name: "Expense", amount: 0, frequency: "monthly" }]
       };
     case "remove-expense":
       if (state.expenses.length <= 1) {
@@ -81,6 +98,13 @@ const reducer = (state: BudgetState, action: Action): BudgetState => {
           index === action.index
             ? { ...expense, amount: normalizeMoney(action.amount, MAX_EXPENSE) }
             : expense
+        )
+      };
+    case "set-expense-frequency":
+      return {
+        ...state,
+        expenses: state.expenses.map((expense, index) =>
+          index === action.index ? { ...expense, frequency: action.frequency } : expense
         )
       };
     case "set-investment":
@@ -137,6 +161,29 @@ function SliderMoneyField({ id, label, value, max, onChange }: SliderMoneyFieldP
         </div>
       </div>
     </div>
+  );
+}
+
+type FrequencySelectProps = {
+  id: string;
+  value: BudgetFrequency;
+  onChange: (value: BudgetFrequency) => void;
+};
+
+function FrequencySelect({ id, value, onChange }: FrequencySelectProps) {
+  return (
+    <label htmlFor={id} className="flex items-center gap-2 text-sm text-forest-800">
+      <span>Frequency</span>
+      <select
+        id={id}
+        value={value}
+        onChange={(event) => onChange(event.target.value as BudgetFrequency)}
+        className="input h-10 min-w-[140px] py-0 pr-8"
+      >
+        <option value="monthly">Monthly</option>
+        <option value="bi-weekly">Bi-weekly</option>
+      </select>
+    </label>
   );
 }
 
@@ -312,10 +359,23 @@ export default function BudgetApp({ username }: BudgetAppProps) {
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-6">
           <section className="card space-y-4 p-6">
-            <h2 className="text-xl font-semibold">Income</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold">Income</h2>
+              <FrequencySelect
+                id="income-frequency"
+                value={state.frequencies.income}
+                onChange={(frequency) =>
+                  safeDispatch({
+                    type: "set-frequency",
+                    section: "income",
+                    frequency
+                  })
+                }
+              />
+            </div>
             <SliderMoneyField
               id="income"
-              label="Monthly Income (CAD)"
+              label={`${frequencyLabel(state.frequencies.income)} Income (CAD)`}
               value={state.income}
               max={MAX_INCOME}
               onChange={(amount) => safeDispatch({ type: "set-income", amount })}
@@ -340,7 +400,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                   key={`expense-${index}`}
                   className="rounded-xl border border-forest-100 bg-paper/70 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]"
                 >
-                  <div className="mb-3 flex items-center gap-3">
+                  <div className="mb-2 flex items-start gap-3">
                     <input
                       type="text"
                       value={expense.name}
@@ -352,16 +412,33 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                         })
                       }
                       placeholder="Category"
-                      className="input"
+                      className="input min-w-0 flex-1"
                     />
                     <button
                       type="button"
                       onClick={() => safeDispatch({ type: "remove-expense", index })}
                       disabled={state.expenses.length <= 1}
-                      className="btn-secondary px-3 py-2 text-sm font-medium disabled:opacity-40"
+                      aria-label="Delete expense"
+                      title="Delete expense"
+                      className="btn-secondary ml-auto h-10 w-10 px-0 py-0 leading-none disabled:opacity-40"
                     >
-                      Delete
+                      <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                        delete
+                      </span>
                     </button>
+                  </div>
+                  <div className="mb-3 flex justify-end">
+                    <FrequencySelect
+                      id={`expense-frequency-${index}`}
+                      value={expense.frequency}
+                      onChange={(frequency) =>
+                        safeDispatch({
+                          type: "set-expense-frequency",
+                          index,
+                          frequency
+                        })
+                      }
+                    />
                   </div>
 
                   <div className="grid gap-3 md:grid-cols-[1fr_140px]">
@@ -407,7 +484,20 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           </section>
 
           <section className="card space-y-4 p-6">
-            <h2 className="text-xl font-semibold">Investments</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold">Investments</h2>
+              <FrequencySelect
+                id="investments-frequency"
+                value={state.frequencies.investments}
+                onChange={(frequency) =>
+                  safeDispatch({
+                    type: "set-frequency",
+                    section: "investments",
+                    frequency
+                  })
+                }
+              />
+            </div>
             <div className="space-y-4">
               <SliderMoneyField
                 id="tfsa"
@@ -442,6 +532,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
 
         <aside className="card border-forest-300/90 p-6 lg:sticky lg:top-8 lg:h-fit">
           <h2 className="text-xl font-semibold">Summary</h2>
+          <p className="mt-1 text-xs text-forest-700/75">All totals shown as monthly equivalents.</p>
           <div className="mt-4 space-y-4">
             <div className="flex items-center justify-between text-sm">
               <span className="text-forest-700/90">Total expenses</span>
