@@ -12,6 +12,17 @@ This version stores one current budget state per user and keeps user data isolat
 - Password hashing with bcrypt (`bcryptjs`)
 - HttpOnly session cookies (`SameSite=Lax`)
 
+## Local Development (`npm run dev`)
+- Run:
+  ```bash
+  npm run dev
+  ```
+- In development, the login page shows **Continue as Dev User** by default.  
+  Clicking it creates/uses a local dev account and signs you in without manual signup.
+- Optional overrides:
+  - `DEV_LOGIN_ENABLED=false` disables this button
+  - `DEV_LOGIN_USERNAME=your-name` changes the dev account username (must match username rules)
+
 ## Quick Start (Docker on Raspberry Pi 5)
 1. From repo root:
    ```bash

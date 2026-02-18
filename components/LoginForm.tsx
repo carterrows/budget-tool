@@ -5,16 +5,18 @@ import { useRouter } from "next/navigation";
 
 type LoginFormProps = {
   allowSignup: boolean;
+  allowDevLogin: boolean;
 };
 
 type AuthMode = "login" | "signup";
 
-export default function LoginForm({ allowSignup }: LoginFormProps) {
+export default function LoginForm({ allowSignup, allowDevLogin }: LoginFormProps) {
   const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [devLoading, setDevLoading] = useState(false);
   const [error, setError] = useState("");
 
   const canUseSignup = allowSignup;
@@ -68,6 +70,33 @@ export default function LoginForm({ allowSignup }: LoginFormProps) {
       setError("Unable to reach the server.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDevLogin = async () => {
+    setDevLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/auth/dev-login", {
+        method: "POST"
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+
+      if (!response.ok) {
+        setError(payload?.error ?? "Development login failed.");
+        return;
+      }
+
+      router.push("/budget");
+      router.refresh();
+    } catch {
+      setError("Unable to reach the server.");
+    } finally {
+      setDevLoading(false);
     }
   };
 
@@ -153,11 +182,22 @@ export default function LoginForm({ allowSignup }: LoginFormProps) {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || devLoading}
           className="w-full rounded-lg bg-forest-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-forest-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Please wait..." : submitLabel}
         </button>
+
+        {allowDevLogin && (
+          <button
+            type="button"
+            disabled={loading || devLoading}
+            onClick={handleDevLogin}
+            className="w-full rounded-lg border border-forest-300 px-4 py-2.5 text-sm font-semibold text-forest-800 transition hover:bg-forest-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {devLoading ? "Opening development session..." : "Continue as Dev User"}
+          </button>
+        )}
       </form>
     </section>
   );
