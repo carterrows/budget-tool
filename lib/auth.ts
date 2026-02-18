@@ -1,0 +1,124 @@
+import bcrypt from "bcryptjs";
+import { randomBytes, createHash } from "crypto";
+import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
+import { getDb } from "./db";
+
+export const SESSION_COOKIE_NAME = "budget_session";
+const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+const USE_SECURE_COOKIES = process.env.SECURE_COOKIES === "true";
+
+export type AuthUser = {
+  id: number;
+  username: string;
+};
+
+type SessionRow = {
+  user_id: number;
+  username: string;
+  expires_at: string;
+};
+
+const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
+
+const nowIso = () => new Date().toISOString();
+
+const deleteExpiredSessions = () => {
+  const db = getDb();
+  db.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(nowIso());
+};
+
+export const normalizeUsername = (input: string) => input.trim().toLowerCase();
+
+export const hashPassword = async (password: string) => bcrypt.hash(password, 12);
+
+export const verifyPassword = async (password: string, hash: string) =>
+  bcrypt.compare(password, hash);
+
+export const createSession = (userId: number) => {
+  deleteExpiredSessions();
+
+  const db = getDb();
+  const token = randomBytes(32).toString("hex");
+  const tokenHash = hashToken(token);
+  const createdAt = new Date();
+  const expiresAt = new Date(createdAt.getTime() + SESSION_TTL_MS);
+
+  db.prepare(
+    "INSERT INTO sessions (user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?)"
+  ).run(userId, tokenHash, expiresAt.toISOString(), createdAt.toISOString());
+
+  return { token, expiresAt };
+};
+
+export const revokeSession = (token: string) => {
+  const db = getDb();
+  db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(hashToken(token));
+};
+
+export const getUserFromSessionToken = (token: string): AuthUser | null => {
+  deleteExpiredSessions();
+
+  const db = getDb();
+  const row = db
+    .prepare(
+      `
+      SELECT sessions.user_id, users.username, sessions.expires_at
+      FROM sessions
+      INNER JOIN users ON users.id = sessions.user_id
+      WHERE sessions.token_hash = ?
+      LIMIT 1
+      `
+    )
+    .get(hashToken(token)) as SessionRow | undefined;
+
+  if (!row) {
+    return null;
+  }
+
+  if (new Date(row.expires_at).getTime() <= Date.now()) {
+    db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(hashToken(token));
+    return null;
+  }
+
+  return {
+    id: row.user_id,
+    username: row.username
+  };
+};
+
+export const getCurrentUser = async (): Promise<AuthUser | null> => {
+  const token = cookies().get(SESSION_COOKIE_NAME)?.value;
+
+  if (!token) {
+    return null;
+  }
+
+  return getUserFromSessionToken(token);
+};
+
+export const getCurrentSessionToken = () => cookies().get(SESSION_COOKIE_NAME)?.value ?? null;
+
+export const setSessionCookie = (response: NextResponse, token: string, expiresAt: Date) => {
+  response.cookies.set({
+    name: SESSION_COOKIE_NAME,
+    value: token,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: USE_SECURE_COOKIES,
+    path: "/",
+    expires: expiresAt
+  });
+};
+
+export const clearSessionCookie = (response: NextResponse) => {
+  response.cookies.set({
+    name: SESSION_COOKIE_NAME,
+    value: "",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: USE_SECURE_COOKIES,
+    path: "/",
+    expires: new Date(0)
+  });
+};

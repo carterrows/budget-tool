@@ -1,0 +1,20 @@
+services:
+  budget-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    platform: linux/arm64
+    environment:
+      NODE_ENV: production
+      PORT: 4050
+      DATABASE_PATH: /data/budget.db
+      ALLOW_SIGNUP: "true"
+      SECURE_COOKIES: "false"
+    ports:
+      - "4050:4050"
+    volumes:
+      - budget_data:/data
+    restart: unless-stopped
+
+volumes:
+  budget_data:
