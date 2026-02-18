@@ -5,41 +5,112 @@
 :root {
   --paper: #f7f5f2;
   --ink: #173025;
-  --forest: #06402b;
-  --forest-soft: #d8ebdf;
 }
 
-* {
-  box-sizing: border-box;
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    margin: 0;
+    min-height: 100%;
+  }
+
+  body {
+    @apply font-sans text-forest-900;
+    background:
+      radial-gradient(circle at 12% -8%, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0) 46%),
+      radial-gradient(circle at 100% 0%, rgba(216, 235, 223, 0.5) 0%, rgba(216, 235, 223, 0) 48%),
+      radial-gradient(circle at 50% 125%, rgba(6, 64, 43, 0.1) 0%, rgba(6, 64, 43, 0) 52%),
+      linear-gradient(180deg, #fcfbf8 0%, var(--paper) 100%);
+    line-height: 1.62;
+    letter-spacing: 0.002em;
+    font-kerning: normal;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display text-forest-900;
+    letter-spacing: -0.018em;
+    line-height: 1.12;
+  }
+
+  input[type="range"] {
+    accent-color: #06402b;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+  }
+
+  input[type="range"]:focus-visible {
+    outline: 2px solid rgba(38, 109, 73, 0.7);
+    outline-offset: 4px;
+  }
 }
 
-html,
-body {
-  margin: 0;
-  min-height: 100%;
+@layer components {
+  .card {
+    @apply rounded-2xl border border-forest-200/90 bg-white/95 shadow-card;
+    box-shadow:
+      0 14px 30px rgba(6, 64, 43, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-lg bg-forest-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-forest-800 active:bg-forest-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest-500 focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-lg border border-forest-300 bg-white px-4 py-2.5 text-sm font-semibold text-forest-800 transition-colors duration-150 hover:bg-forest-50 active:bg-forest-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest-400 focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-forest-200 bg-white px-3 py-2 text-sm text-forest-900 placeholder:text-forest-600/65 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest-400 focus-visible:ring-offset-2 focus-visible:ring-offset-paper;
+  }
 }
 
-body {
-  color: var(--ink);
-  background:
-    radial-gradient(circle at 0% 0%, #ffffff 0%, rgba(255, 255, 255, 0) 45%),
-    linear-gradient(180deg, #fdfcfb 0%, var(--paper) 100%);
-  font-family: "Times New Roman", Times, serif;
-  line-height: 1.45;
-  letter-spacing: 0.003em;
-  font-kerning: normal;
-  text-rendering: optimizeLegibility;
+@layer utilities {
+  .caps-label {
+    letter-spacing: 0.17em;
+  }
+
+  .material-symbols-outlined {
+    font-variation-settings:
+      "FILL" 0,
+      "wght" 400,
+      "GRAD" 0,
+      "opsz" 24;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
 }
 
-h1,
-h2,
-h3 {
-  color: var(--forest);
-  font-family: "Times New Roman", Times, serif;
-  letter-spacing: 0.01em;
-  line-height: 1.2;
-}
-
-input[type="range"] {
-  accent-color: var(--forest);
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

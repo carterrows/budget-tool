@@ -10,15 +10,21 @@ import {
   calculateTotals,
   sanitizeBudgetState
 } from "@/lib/budget-state";
-import type { BudgetState, InvestmentState } from "@/lib/types";
+import type { BudgetFrequency, BudgetState, InvestmentState } from "@/lib/types";
 
 type Action =
   | { type: "replace"; state: BudgetState }
   | { type: "set-income"; amount: number }
+  | {
+      type: "set-frequency";
+      section: "income" | "investments";
+      frequency: BudgetFrequency;
+    }
   | { type: "add-expense" }
   | { type: "remove-expense"; index: number }
   | { type: "set-expense-name"; index: number; name: string }
   | { type: "set-expense-amount"; index: number; amount: number }
+  | { type: "set-expense-frequency"; index: number; frequency: BudgetFrequency }
   | {
       type: "set-investment";
       field: keyof InvestmentState;
@@ -44,6 +50,9 @@ const clamp = (value: number, min: number, max: number) =>
 const normalizeMoney = (value: number, max: number) =>
   Math.round(clamp(value, 0, max) * 100) / 100;
 
+const frequencyLabel = (frequency: BudgetFrequency) =>
+  frequency === "bi-weekly" ? "Bi-weekly" : "Monthly";
+
 const reducer = (state: BudgetState, action: Action): BudgetState => {
   switch (action.type) {
     case "replace":
@@ -53,10 +62,18 @@ const reducer = (state: BudgetState, action: Action): BudgetState => {
         ...state,
         income: normalizeMoney(action.amount, MAX_INCOME)
       };
+    case "set-frequency":
+      return {
+        ...state,
+        frequencies: {
+          ...state.frequencies,
+          [action.section]: action.frequency
+        }
+      };
     case "add-expense":
       return {
         ...state,
-        expenses: [...state.expenses, { name: "Expense", amount: 0 }]
+        expenses: [...state.expenses, { name: "Expense", amount: 0, frequency: "monthly" }]
       };
     case "remove-expense":
       if (state.expenses.length <= 1) {
@@ -81,6 +98,13 @@ const reducer = (state: BudgetState, action: Action): BudgetState => {
           index === action.index
             ? { ...expense, amount: normalizeMoney(action.amount, MAX_EXPENSE) }
             : expense
+        )
+      };
+    case "set-expense-frequency":
+      return {
+        ...state,
+        expenses: state.expenses.map((expense, index) =>
+          index === action.index ? { ...expense, frequency: action.frequency } : expense
         )
       };
     case "set-investment":
@@ -119,7 +143,7 @@ function SliderMoneyField({ id, label, value, max, onChange }: SliderMoneyFieldP
           step={1}
           value={value}
           onChange={(event) => onChange(toNumber(event.target.value))}
-          className="w-full"
+          className="w-full accent-forest-700"
         />
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
@@ -132,11 +156,34 @@ function SliderMoneyField({ id, label, value, max, onChange }: SliderMoneyFieldP
             step={1}
             value={value}
             onChange={(event) => onChange(toNumber(event.target.value))}
-            className="w-full rounded-lg border border-forest-200 px-3 py-2 pl-7 text-right text-sm outline-none transition focus:border-forest-500"
+            className="input tabular-nums pl-7 pr-3 text-right"
           />
         </div>
       </div>
     </div>
+  );
+}
+
+type FrequencySelectProps = {
+  id: string;
+  value: BudgetFrequency;
+  onChange: (value: BudgetFrequency) => void;
+};
+
+function FrequencySelect({ id, value, onChange }: FrequencySelectProps) {
+  return (
+    <label htmlFor={id} className="flex items-center gap-2 text-sm text-forest-800">
+      <span>Frequency</span>
+      <select
+        id={id}
+        value={value}
+        onChange={(event) => onChange(event.target.value as BudgetFrequency)}
+        className="input h-10 min-w-[140px] py-0 pr-8"
+      >
+        <option value="monthly">Monthly</option>
+        <option value="bi-weekly">Bi-weekly</option>
+      </select>
+    </label>
   );
 }
 
@@ -273,7 +320,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
 
   if (loading) {
     return (
-      <section className="mx-auto max-w-5xl rounded-2xl border border-forest-200 bg-white p-8 shadow-card">
+      <section className="card mx-auto max-w-5xl p-8">
         <p className="text-sm text-forest-700/80">Loading your budget...</p>
       </section>
     );
@@ -289,20 +336,20 @@ export default function BudgetApp({ username }: BudgetAppProps) {
 
   return (
     <section className="mx-auto max-w-5xl space-y-6">
-      <header className="flex flex-col gap-4 rounded-2xl border border-forest-200 bg-white p-6 shadow-card md:flex-row md:items-center md:justify-between">
+      <header className="card flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-forest-600">Budget Tool</p>
-          <h1 className="text-3xl font-semibold">Monthly Plan</h1>
+          <p className="caps-label text-xs font-semibold uppercase text-forest-600">Budget Tool</p>
+          <h1 className="text-3xl font-semibold tracking-[-0.02em]">Monthly Plan</h1>
           <p className="text-sm text-forest-700/80">Signed in as {username}</p>
         </div>
 
         <div className="flex items-center gap-4">
-          <p className="text-sm text-forest-700/90">{statusLabel}</p>
+          <p className="tabular-nums text-sm text-forest-700/90">{statusLabel}</p>
           <button
             type="button"
             disabled={isLoggingOut}
             onClick={logout}
-            className="rounded-lg border border-forest-300 px-3 py-2 text-sm font-medium text-forest-800 transition hover:bg-forest-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="btn-secondary px-3 py-2 text-sm font-medium"
           >
             {isLoggingOut ? "Logging out..." : "Logout"}
           </button>
@@ -311,24 +358,37 @@ export default function BudgetApp({ username }: BudgetAppProps) {
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-6">
-          <section className="space-y-4 rounded-2xl border border-forest-200 bg-white p-6 shadow-card">
-            <h2 className="text-xl font-semibold">Income</h2>
+          <section className="card space-y-4 p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold">Income</h2>
+              <FrequencySelect
+                id="income-frequency"
+                value={state.frequencies.income}
+                onChange={(frequency) =>
+                  safeDispatch({
+                    type: "set-frequency",
+                    section: "income",
+                    frequency
+                  })
+                }
+              />
+            </div>
             <SliderMoneyField
               id="income"
-              label="Monthly Income (CAD)"
+              label={`${frequencyLabel(state.frequencies.income)} Income (CAD)`}
               value={state.income}
               max={MAX_INCOME}
               onChange={(amount) => safeDispatch({ type: "set-income", amount })}
             />
           </section>
 
-          <section className="space-y-4 rounded-2xl border border-forest-200 bg-white p-6 shadow-card">
+          <section className="card space-y-4 p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Expenses</h2>
               <button
                 type="button"
                 onClick={() => safeDispatch({ type: "add-expense" })}
-                className="rounded-lg border border-forest-300 px-3 py-2 text-sm font-medium text-forest-800 transition hover:bg-forest-50"
+                className="btn-secondary px-3 py-2 text-sm font-medium"
               >
                 + Add expense
               </button>
@@ -338,9 +398,9 @@ export default function BudgetApp({ username }: BudgetAppProps) {
               {state.expenses.map((expense, index) => (
                 <article
                   key={`expense-${index}`}
-                  className="rounded-xl border border-forest-100 bg-paper/60 p-4"
+                  className="rounded-xl border border-forest-100 bg-paper/70 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]"
                 >
-                  <div className="mb-3 flex items-center gap-3">
+                  <div className="mb-2 flex items-start gap-3">
                     <input
                       type="text"
                       value={expense.name}
@@ -352,16 +412,33 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                         })
                       }
                       placeholder="Category"
-                      className="w-full rounded-lg border border-forest-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-forest-500"
+                      className="input min-w-0 flex-1"
                     />
                     <button
                       type="button"
                       onClick={() => safeDispatch({ type: "remove-expense", index })}
                       disabled={state.expenses.length <= 1}
-                      className="rounded-lg border border-forest-300 px-3 py-2 text-sm text-forest-800 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label="Delete expense"
+                      title="Delete expense"
+                      className="btn-secondary ml-auto h-10 w-10 px-0 py-0 leading-none disabled:opacity-40"
                     >
-                      Delete
+                      <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                        delete
+                      </span>
                     </button>
+                  </div>
+                  <div className="mb-3 flex justify-end">
+                    <FrequencySelect
+                      id={`expense-frequency-${index}`}
+                      value={expense.frequency}
+                      onChange={(frequency) =>
+                        safeDispatch({
+                          type: "set-expense-frequency",
+                          index,
+                          frequency
+                        })
+                      }
+                    />
                   </div>
 
                   <div className="grid gap-3 md:grid-cols-[1fr_140px]">
@@ -378,6 +455,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                           amount: toNumber(event.target.value)
                         })
                       }
+                      className="w-full accent-forest-700"
                     />
                     <div className="relative">
                       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
@@ -396,7 +474,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                             amount: toNumber(event.target.value)
                           })
                         }
-                        className="w-full rounded-lg border border-forest-200 bg-white px-3 py-2 pl-7 text-right text-sm outline-none transition focus:border-forest-500"
+                        className="input tabular-nums pl-7 pr-3 text-right"
                       />
                     </div>
                   </div>
@@ -405,8 +483,21 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             </div>
           </section>
 
-          <section className="space-y-4 rounded-2xl border border-forest-200 bg-white p-6 shadow-card">
-            <h2 className="text-xl font-semibold">Investments</h2>
+          <section className="card space-y-4 p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold">Investments</h2>
+              <FrequencySelect
+                id="investments-frequency"
+                value={state.frequencies.investments}
+                onChange={(frequency) =>
+                  safeDispatch({
+                    type: "set-frequency",
+                    section: "investments",
+                    frequency
+                  })
+                }
+              />
+            </div>
             <div className="space-y-4">
               <SliderMoneyField
                 id="tfsa"
@@ -439,25 +530,26 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           </section>
         </div>
 
-        <aside className="rounded-2xl border border-forest-300 bg-white p-6 shadow-card lg:sticky lg:top-8 lg:h-fit">
+        <aside className="card border-forest-300/90 p-6 lg:sticky lg:top-8 lg:h-fit">
           <h2 className="text-xl font-semibold">Summary</h2>
+          <p className="mt-1 text-xs text-forest-700/75">All totals shown as monthly equivalents.</p>
           <div className="mt-4 space-y-4">
             <div className="flex items-center justify-between text-sm">
               <span className="text-forest-700/90">Total expenses</span>
-              <span className="font-medium text-forest-900">
+              <span className="tabular-nums font-semibold text-forest-900">
                 {cad.format(totals.totalExpenses)}
               </span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-forest-700/90">Total investments</span>
-              <span className="font-medium text-forest-900">
+              <span className="tabular-nums font-semibold text-forest-900">
                 {cad.format(totals.totalInvestments)}
               </span>
             </div>
-            <div className="rounded-xl border border-forest-100 bg-paper p-4">
-              <p className="text-sm uppercase tracking-[0.16em] text-forest-600">Leftover Cash</p>
+            <div className="rounded-xl border border-forest-300/60 bg-gradient-to-br from-forest-50 via-paper to-white p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+              <p className="caps-label text-sm font-semibold uppercase text-forest-600">Leftover Cash</p>
               <p
-                className={`mt-2 text-4xl font-semibold leading-tight ${
+                className={`tabular-nums mt-2 text-4xl font-semibold leading-tight ${
                   totals.leftover < 0 ? "text-rose-700" : "text-forest-700"
                 }`}
               >
