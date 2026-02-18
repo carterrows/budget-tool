@@ -19,8 +19,14 @@ This version stores one current budget state per user and keeps user data isolat
    ```
 2. Open:
    ```text
-   http://<pi-ip>:4050
+   Through your HTTPS reverse proxy (recommended production setup)
    ```
+3. Note:
+   - `docker-compose.yml` is production-oriented: binds to `127.0.0.1:4050` and sets `SECURE_COOKIES=true`.
+   - For local HTTP testing, use:
+     ```bash
+     docker compose -f docker-compose-dev.yml up --build -d
+     ```
 
 ## Create Initial Users
 This app uses a **Create Account (Sign Up) page** guarded by `ALLOW_SIGNUP`.
@@ -47,8 +53,8 @@ Username rules:
 - SQLite file path in container: `/data/budget.db`
 - Docker named volume: `budget_data`
 - Cookie security:
-  - `SECURE_COOKIES: "false"` for HTTP on local LAN (default in compose)
-  - Set `SECURE_COOKIES: "true"` when serving over HTTPS
+  - Production compose uses `SECURE_COOKIES: "true"` (HTTPS required)
+  - Dev compose uses `SECURE_COOKIES: "false"` for plain HTTP testing
 
 State is stored per user in `states.state_json` and overwritten on each save (no month history in v1).
 
@@ -70,12 +76,12 @@ Edit `docker-compose.yml`:
 - `ports` mapping (left side is host port)
 - `PORT` environment variable (must match container port)
 
-Example for host port `5050`:
+Example for host port `5050` on localhost-only bind:
 ```yaml
 environment:
   PORT: 4050
 ports:
-  - "5050:4050"
+  - "127.0.0.1:5050:4050"
 ```
 
 Then:

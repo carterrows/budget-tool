@@ -9,9 +9,9 @@ services:
       PORT: 4050
       DATABASE_PATH: /data/budget.db
       ALLOW_SIGNUP: "true"
-      SECURE_COOKIES: "true"
+      SECURE_COOKIES: "false"
     ports:
-      - "127.0.0.1:4050:4050"
+      - "4050:4050"
     volumes:
       - budget_data:/data
     restart: unless-stopped

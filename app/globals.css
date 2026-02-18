@@ -24,15 +24,20 @@ body {
   background:
     radial-gradient(circle at 0% 0%, #ffffff 0%, rgba(255, 255, 255, 0) 45%),
     linear-gradient(180deg, #fdfcfb 0%, var(--paper) 100%);
-  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  font-family: "Times New Roman", Times, serif;
+  line-height: 1.45;
+  letter-spacing: 0.003em;
+  font-kerning: normal;
+  text-rendering: optimizeLegibility;
 }
 
 h1,
 h2,
 h3 {
   color: var(--forest);
-  font-family: "Georgia", "Times New Roman", serif;
-  letter-spacing: 0.02em;
+  font-family: "Times New Roman", Times, serif;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
 }
 
 input[type="range"] {
