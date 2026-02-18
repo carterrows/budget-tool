@@ -1,20 +1,24 @@
-FROM node:20-alpine AS deps
+FROM node:24.13.0-alpine AS base
+RUN npm install -g npm@11.10.0
+
+FROM base AS deps
 WORKDIR /app
 RUN apk add --no-cache python3 make g++ libc6-compat
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 
-FROM node:20-alpine AS builder
+FROM base AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-FROM node:20-alpine AS runner
+FROM node:24.13.0-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=4050
+ENV HOSTNAME=0.0.0.0
 ENV DATABASE_PATH=/data/budget.db
 ENV SECURE_COOKIES=false
 ENV NEXT_TELEMETRY_DISABLED=1

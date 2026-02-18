@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
   }
 
-  const token = getCurrentSessionToken();
+  const token = await getCurrentSessionToken();
   if (token) {
     revokeSession(token);
   }
