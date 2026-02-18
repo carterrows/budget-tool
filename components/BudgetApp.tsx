@@ -37,6 +37,7 @@ type Action =
     };
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
+type ExpenseViewMode = "list" | "edit";
 
 const cad = new Intl.NumberFormat("en-CA", {
   style: "currency",
@@ -278,6 +279,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   const [initialized, setInitialized] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isIncomeHelpOpen, setIsIncomeHelpOpen] = useState(false);
+  const [expenseViewMode, setExpenseViewMode] = useState<ExpenseViewMode>("list");
 
   const safeDispatch = (action: Action) => {
     setHasPendingEdits(true);
@@ -551,84 +553,102 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           <section className="card space-y-4 p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Expenses</h2>
-              <button
-                type="button"
-                onClick={() => safeDispatch({ type: "add-expense" })}
-                className="btn-secondary px-3 py-2 text-sm font-medium"
-              >
-                + Add expense
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <div
+                  className="inline-flex rounded-lg border border-forest-200 bg-paper/70 p-1"
+                  role="tablist"
+                  aria-label="Expense view mode"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={expenseViewMode === "list"}
+                    onClick={() => setExpenseViewMode("list")}
+                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                      expenseViewMode === "list"
+                        ? "bg-forest-700 text-white"
+                        : "text-forest-700 hover:bg-forest-100/70"
+                    }`}
+                  >
+                    List view
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={expenseViewMode === "edit"}
+                    onClick={() => setExpenseViewMode("edit")}
+                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                      expenseViewMode === "edit"
+                        ? "bg-forest-700 text-white"
+                        : "text-forest-700 hover:bg-forest-100/70"
+                    }`}
+                  >
+                    Edit view
+                  </button>
+                </div>
+                {expenseViewMode === "edit" ? (
+                  <button
+                    type="button"
+                    onClick={() => safeDispatch({ type: "add-expense" })}
+                    className="btn-secondary px-3 py-2 text-sm font-medium"
+                  >
+                    + Add expense
+                  </button>
+                ) : null}
+              </div>
             </div>
 
-            <div className="space-y-4">
-              {state.expenses.map((expense, index) => (
-                <article
-                  key={`expense-${index}`}
-                  className="rounded-xl border border-forest-100 bg-paper/70 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]"
-                >
-                  <div className="mb-2 flex items-start gap-3">
-                    <input
-                      type="text"
-                      value={expense.name}
-                      onChange={(event) =>
-                        safeDispatch({
-                          type: "set-expense-name",
-                          index,
-                          name: event.target.value
-                        })
-                      }
-                      placeholder="Category"
-                      className="input min-w-0 flex-1"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => safeDispatch({ type: "remove-expense", index })}
-                      disabled={state.expenses.length <= 1}
-                      aria-label="Delete expense"
-                      title="Delete expense"
-                      className="btn-secondary ml-auto h-10 w-10 px-0 py-0 leading-none disabled:opacity-40"
-                    >
-                      <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
-                        delete
-                      </span>
-                    </button>
-                  </div>
-                  <div className="mb-3 flex justify-end">
-                    <FrequencySelect
-                      id={`expense-frequency-${index}`}
-                      value={expense.frequency}
-                      onChange={(frequency) =>
-                        safeDispatch({
-                          type: "set-expense-frequency",
-                          index,
-                          frequency
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div className="grid gap-3 md:grid-cols-[1fr_140px]">
-                    <input
-                      type="range"
-                      min={0}
-                      max={MAX_EXPENSE}
-                      step={1}
-                      value={expense.amount}
-                      onChange={(event) =>
-                        safeDispatch({
-                          type: "set-expense-amount",
-                          index,
-                          amount: toNumber(event.target.value)
-                        })
-                      }
-                      className="w-full accent-forest-700"
-                    />
-                    <div className="relative">
-                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
-                        $
-                      </span>
+            {expenseViewMode === "edit" ? (
+              <div className="space-y-4">
+                {state.expenses.map((expense, index) => (
+                  <article
+                    key={`expense-${index}`}
+                    className="rounded-xl border border-forest-100 bg-paper/70 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]"
+                  >
+                    <div className="mb-2 flex items-start gap-3">
                       <input
-                        type="number"
+                        type="text"
+                        value={expense.name}
+                        onChange={(event) =>
+                          safeDispatch({
+                            type: "set-expense-name",
+                            index,
+                            name: event.target.value
+                          })
+                        }
+                        placeholder="Category"
+                        className="input min-w-0 flex-1"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => safeDispatch({ type: "remove-expense", index })}
+                        disabled={state.expenses.length <= 1}
+                        aria-label="Delete expense"
+                        title="Delete expense"
+                        className="btn-secondary ml-auto h-10 w-10 px-0 py-0 leading-none disabled:opacity-40"
+                      >
+                        <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                          delete
+                        </span>
+                      </button>
+                    </div>
+                    <div className="mb-3 flex justify-end">
+                      <FrequencySelect
+                        id={`expense-frequency-${index}`}
+                        value={expense.frequency}
+                        onChange={(frequency) =>
+                          safeDispatch({
+                            type: "set-expense-frequency",
+                            index,
+                            frequency
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-[1fr_140px]">
+                      <input
+                        type="range"
                         min={0}
                         max={MAX_EXPENSE}
                         step={1}
@@ -640,14 +660,64 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                             amount: toNumber(event.target.value)
                           })
                         }
-                        onFocus={selectInputValueOnFocus}
-                        className="input tabular-nums pl-7 pr-3 text-right"
+                        className="w-full accent-forest-700"
                       />
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
+                          $
+                        </span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={MAX_EXPENSE}
+                          step={1}
+                          value={expense.amount}
+                          onChange={(event) =>
+                            safeDispatch({
+                              type: "set-expense-amount",
+                              index,
+                              amount: toNumber(event.target.value)
+                            })
+                          }
+                          onFocus={selectInputValueOnFocus}
+                          className="input tabular-nums pl-7 pr-3 text-right"
+                        />
+                      </div>
                     </div>
-                  </div>
-                </article>
-              ))}
-            </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-forest-700/80">
+                  Read-only summary. Switch to Edit view to make changes.
+                </p>
+                <div className="overflow-hidden rounded-xl border border-forest-100 bg-paper/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]">
+                  <ul className="divide-y divide-forest-100/90">
+                    {state.expenses.map((expense, index) => (
+                      <li
+                        key={`expense-list-${index}`}
+                        className="flex items-center justify-between gap-4 px-4 py-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-forest-900">
+                            {expense.name.trim().length > 0
+                              ? expense.name
+                              : `Expense ${index + 1}`}
+                          </p>
+                          <p className="text-xs text-forest-700/75">
+                            {expense.frequency === "bi-weekly" ? "Bi-weekly" : "Monthly"}
+                          </p>
+                        </div>
+                        <p className="tabular-nums text-sm font-semibold text-forest-900">
+                          {cad.format(expense.amount)}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
           </section>
 
           <section className="card space-y-4 p-6">
