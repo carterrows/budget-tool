@@ -1,23 +1,28 @@
 "use client";
 
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { type FocusEvent, useEffect, useMemo, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   DEFAULT_STATE,
+  MAX_BONUS_AMOUNT,
+  MAX_BONUS_PERCENT,
   MAX_EXPENSE,
-  MAX_INCOME,
   MAX_INVESTMENT,
+  MAX_YEARLY_SALARY,
   calculateTotals,
   sanitizeBudgetState
 } from "@/lib/budget-state";
-import type { BudgetFrequency, BudgetState, InvestmentState } from "@/lib/types";
+import { calculateOntarioNetIncomeFromInput } from "@/lib/tax";
+import type { BonusType, BudgetFrequency, BudgetState, InvestmentState } from "@/lib/types";
 
 type Action =
   | { type: "replace"; state: BudgetState }
-  | { type: "set-income"; amount: number }
+  | { type: "set-yearly-salary"; amount: number }
+  | { type: "set-bonus-type"; bonusType: BonusType }
+  | { type: "set-bonus-value"; amount: number }
   | {
       type: "set-frequency";
-      section: "income" | "investments";
+      section: "investments";
       frequency: BudgetFrequency;
     }
   | { type: "add-expense" }
@@ -50,17 +55,43 @@ const clamp = (value: number, min: number, max: number) =>
 const normalizeMoney = (value: number, max: number) =>
   Math.round(clamp(value, 0, max) * 100) / 100;
 
-const frequencyLabel = (frequency: BudgetFrequency) =>
-  frequency === "bi-weekly" ? "Bi-weekly" : "Monthly";
+const selectInputValueOnFocus = (event: FocusEvent<HTMLInputElement>) => {
+  const currentValue = toNumber(event.currentTarget.value);
+  if (currentValue === 0) {
+    event.currentTarget.select();
+  }
+};
 
 const reducer = (state: BudgetState, action: Action): BudgetState => {
   switch (action.type) {
     case "replace":
       return sanitizeBudgetState(action.state);
-    case "set-income":
+    case "set-yearly-salary":
       return {
         ...state,
-        income: normalizeMoney(action.amount, MAX_INCOME)
+        yearlySalary: normalizeMoney(action.amount, MAX_YEARLY_SALARY)
+      };
+    case "set-bonus-type":
+      const nextBonusValue =
+        action.bonusType === "amount"
+          ? normalizeMoney(state.bonusValue, MAX_BONUS_AMOUNT)
+          : action.bonusType === "percentage"
+            ? normalizeMoney(state.bonusValue, MAX_BONUS_PERCENT)
+            : 0;
+      return {
+        ...state,
+        bonusType: action.bonusType,
+        bonusValue: nextBonusValue
+      };
+    case "set-bonus-value":
+      return {
+        ...state,
+        bonusValue:
+          state.bonusType === "amount"
+            ? normalizeMoney(action.amount, MAX_BONUS_AMOUNT)
+            : state.bonusType === "percentage"
+              ? normalizeMoney(action.amount, MAX_BONUS_PERCENT)
+              : 0
       };
     case "set-frequency":
       return {
@@ -156,8 +187,54 @@ function SliderMoneyField({ id, label, value, max, onChange }: SliderMoneyFieldP
             step={1}
             value={value}
             onChange={(event) => onChange(toNumber(event.target.value))}
+            onFocus={selectInputValueOnFocus}
             className="input tabular-nums pl-7 pr-3 text-right"
           />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type SliderPercentFieldProps = {
+  id: string;
+  label: string;
+  value: number;
+  max: number;
+  onChange: (value: number) => void;
+};
+
+function SliderPercentField({ id, label, value, max, onChange }: SliderPercentFieldProps) {
+  return (
+    <div className="space-y-2">
+      <label htmlFor={id} className="text-sm font-medium text-forest-800">
+        {label}
+      </label>
+      <div className="grid gap-3 md:grid-cols-[1fr_140px]">
+        <input
+          id={id}
+          type="range"
+          min={0}
+          max={max}
+          step={0.1}
+          value={value}
+          onChange={(event) => onChange(toNumber(event.target.value))}
+          className="w-full accent-forest-700"
+        />
+        <div className="relative">
+          <input
+            type="number"
+            min={0}
+            max={max}
+            step={0.1}
+            value={value}
+            onChange={(event) => onChange(toNumber(event.target.value))}
+            onFocus={selectInputValueOnFocus}
+            className="input tabular-nums pl-3 pr-8 text-right"
+          />
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
+            %
+          </span>
         </div>
       </div>
     </div>
@@ -200,6 +277,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   const [hasPendingEdits, setHasPendingEdits] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isIncomeHelpOpen, setIsIncomeHelpOpen] = useState(false);
 
   const safeDispatch = (action: Action) => {
     setHasPendingEdits(true);
@@ -296,7 +374,47 @@ export default function BudgetApp({ username }: BudgetAppProps) {
     };
   }, [state, initialized, hasPendingEdits]);
 
+  useEffect(() => {
+    if (!isIncomeHelpOpen) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsIncomeHelpOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isIncomeHelpOpen]);
+
+  useEffect(() => {
+    if (!isIncomeHelpOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isIncomeHelpOpen]);
+
   const totals = useMemo(() => calculateTotals(state), [state]);
+  const incomeBreakdown = useMemo(
+    () =>
+      calculateOntarioNetIncomeFromInput({
+        yearlySalary: state.yearlySalary,
+        bonusType: state.bonusType,
+        bonusValue: state.bonusValue
+      }),
+    [state.yearlySalary, state.bonusType, state.bonusValue]
+  );
 
   const logout = async () => {
     setIsLoggingOut(true);
@@ -359,27 +477,75 @@ export default function BudgetApp({ username }: BudgetAppProps) {
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-6">
           <section className="card space-y-4 p-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Income</h2>
-              <FrequencySelect
-                id="income-frequency"
-                value={state.frequencies.income}
-                onChange={(frequency) =>
-                  safeDispatch({
-                    type: "set-frequency",
-                    section: "income",
-                    frequency
-                  })
-                }
-              />
+              <button
+                type="button"
+                onClick={() => setIsIncomeHelpOpen(true)}
+                aria-label="How net income is calculated"
+                title="How net income is calculated"
+                className="btn-secondary h-9 w-9 px-0 py-0 leading-none"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                  question_mark
+                </span>
+              </button>
             </div>
             <SliderMoneyField
-              id="income"
-              label={`${frequencyLabel(state.frequencies.income)} Income (CAD)`}
-              value={state.income}
-              max={MAX_INCOME}
-              onChange={(amount) => safeDispatch({ type: "set-income", amount })}
+              id="yearly-salary"
+              label="Yearly Salary (CAD)"
+              value={state.yearlySalary}
+              max={MAX_YEARLY_SALARY}
+              onChange={(amount) => safeDispatch({ type: "set-yearly-salary", amount })}
             />
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <label htmlFor="bonus-type" className="text-sm font-medium text-forest-800">
+                  Year-end Bonus
+                </label>
+                <select
+                  id="bonus-type"
+                  value={state.bonusType}
+                  onChange={(event) =>
+                    safeDispatch({
+                      type: "set-bonus-type",
+                      bonusType: event.target.value as BonusType
+                    })
+                  }
+                  className="input h-10 min-w-[220px] py-0 pr-8 md:w-[260px]"
+                >
+                  <option value="none">No bonus</option>
+                  <option value="amount">Dollar amount</option>
+                  <option value="percentage">Percentage of salary</option>
+                </select>
+              </div>
+            </div>
+            {state.bonusType === "amount" ? (
+              <SliderMoneyField
+                id="bonus-amount"
+                label="Bonus Amount (CAD)"
+                value={state.bonusValue}
+                max={MAX_BONUS_AMOUNT}
+                onChange={(amount) => safeDispatch({ type: "set-bonus-value", amount })}
+              />
+            ) : null}
+            {state.bonusType === "percentage" ? (
+              <SliderPercentField
+                id="bonus-percent"
+                label="Bonus Percentage"
+                value={state.bonusValue}
+                max={MAX_BONUS_PERCENT}
+                onChange={(amount) => safeDispatch({ type: "set-bonus-value", amount })}
+              />
+            ) : null}
+            <div className="rounded-xl border border-forest-200/80 bg-paper/55 p-4">
+              <p className="caps-label text-xs font-semibold uppercase text-forest-600">
+                Yearly Net Income (After Tax + Deductions)
+              </p>
+              <p className="tabular-nums mt-2 text-2xl font-semibold text-forest-700">
+                {cad.format(incomeBreakdown.annualNetIncome)}
+              </p>
+            </div>
           </section>
 
           <section className="card space-y-4 p-6">
@@ -474,6 +640,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                             amount: toNumber(event.target.value)
                           })
                         }
+                        onFocus={selectInputValueOnFocus}
                         className="input tabular-nums pl-7 pr-3 text-right"
                       />
                     </div>
@@ -535,6 +702,12 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           <p className="mt-1 text-xs text-forest-700/75">All totals shown as monthly equivalents.</p>
           <div className="mt-4 space-y-4">
             <div className="flex items-center justify-between text-sm">
+              <span className="text-forest-700/90">Monthly net income</span>
+              <span className="tabular-nums font-semibold text-forest-900">
+                {cad.format(totals.monthlyIncome)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
               <span className="text-forest-700/90">Total expenses</span>
               <span className="tabular-nums font-semibold text-forest-900">
                 {cad.format(totals.totalExpenses)}
@@ -559,6 +732,104 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           </div>
         </aside>
       </div>
+
+      {isIncomeHelpOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-forest-900/25 p-4 backdrop-blur-sm"
+          onClick={() => setIsIncomeHelpOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="income-help-title"
+        >
+          <article
+            className="card w-full max-w-3xl p-6 md:p-8"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="caps-label text-xs font-semibold uppercase text-forest-600">
+                  Income Calculator
+                </p>
+                <h3 id="income-help-title" className="mt-1 text-2xl font-semibold">
+                  Ontario After-Tax Income (2026)
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsIncomeHelpOpen(false)}
+                className="btn-secondary h-9 px-3 py-0 text-sm"
+              >
+                Close
+              </button>
+            </div>
+
+            <p className="mt-3 text-sm text-forest-700/85">
+              Monthly income is calculated from annual salary + bonus, then reduced by
+              federal/provincial tax and mandatory CPP/EI deductions.
+            </p>
+
+            <div className="mt-6 grid gap-3 rounded-xl border border-forest-200 bg-paper/55 p-4 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Annual salary</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(incomeBreakdown.annualSalary)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Annual bonus</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(incomeBreakdown.annualBonus)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-t border-forest-200/80 pt-3">
+                <span className="text-forest-700/90">Gross annual income</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(incomeBreakdown.annualGrossIncome)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Federal income tax</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(incomeBreakdown.federalTax)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Ontario income tax</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(incomeBreakdown.provincialTax)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">CPP contribution</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(incomeBreakdown.cppContribution)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">EI premium</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(incomeBreakdown.eiPremium)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-t border-forest-200/80 pt-3">
+                <span className="text-forest-700/90">Total annual deductions</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(incomeBreakdown.totalDeductions)}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-xl border border-forest-300/70 bg-gradient-to-br from-forest-50 via-paper to-white p-4">
+              <p className="caps-label text-xs font-semibold uppercase text-forest-600">
+                Monthly Net Income Used In Budget
+              </p>
+              <p className="tabular-nums mt-2 text-3xl font-semibold text-forest-700">
+                {cad.format(incomeBreakdown.monthlyNetIncome)}
+              </p>
+            </div>
+          </article>
+        </div>
+      ) : null}
     </section>
   );
 }

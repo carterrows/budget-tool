@@ -1,11 +1,16 @@
-import type { BudgetFrequency, BudgetState, ExpenseItem } from "./types";
+import type { BonusType, BudgetFrequency, BudgetState, ExpenseItem } from "./types";
+import { calculateOntarioNetIncomeFromInput } from "./tax";
 
-export const MAX_INCOME = 20000;
+export const MAX_YEARLY_SALARY = 500_000;
+export const MAX_BONUS_AMOUNT = 100_000;
+export const MAX_BONUS_PERCENT = 100;
 export const MAX_EXPENSE = 10000;
 export const MAX_INVESTMENT = 10000;
 
 export const DEFAULT_STATE: BudgetState = {
-  income: 0,
+  yearlySalary: 0,
+  bonusType: "none",
+  bonusValue: 0,
   expenses: [{ name: "Expense", amount: 0, frequency: "monthly" }],
   investments: {
     tfsa: 0,
@@ -13,7 +18,6 @@ export const DEFAULT_STATE: BudgetState = {
     rrsp: 0
   },
   frequencies: {
-    income: "monthly",
     investments: "monthly"
   }
 };
@@ -41,6 +45,26 @@ const normalizeAmount = (value: unknown, max: number) =>
 
 const normalizeFrequency = (value: unknown): BudgetFrequency =>
   value === "bi-weekly" ? "bi-weekly" : "monthly";
+
+const normalizeBonusType = (value: unknown): BonusType => {
+  if (value === "amount" || value === "percentage") {
+    return value;
+  }
+
+  return "none";
+};
+
+const normalizeBonusValue = (value: unknown, bonusType: BonusType) => {
+  if (bonusType === "amount") {
+    return normalizeAmount(value, MAX_BONUS_AMOUNT);
+  }
+
+  if (bonusType === "percentage") {
+    return normalizeAmount(value, MAX_BONUS_PERCENT);
+  }
+
+  return 0;
+};
 
 const normalizeExpense = (
   value: unknown,
@@ -83,8 +107,12 @@ export const sanitizeBudgetState = (input: unknown): BudgetState => {
     expenses.push({ name: "Expense", amount: 0, frequency: defaultExpenseFrequency });
   }
 
+  const bonusType = normalizeBonusType(candidate.bonusType);
+
   return {
-    income: normalizeAmount(candidate.income, MAX_INCOME),
+    yearlySalary: normalizeAmount(candidate.yearlySalary, MAX_YEARLY_SALARY),
+    bonusType,
+    bonusValue: normalizeBonusValue(candidate.bonusValue, bonusType),
     expenses,
     investments: {
       tfsa: normalizeAmount(
@@ -101,7 +129,6 @@ export const sanitizeBudgetState = (input: unknown): BudgetState => {
       )
     },
     frequencies: {
-      income: normalizeFrequency(frequenciesRaw.income),
       investments: normalizeFrequency(frequenciesRaw.investments)
     }
   };
@@ -111,7 +138,11 @@ const toMonthlyAmount = (amount: number, frequency: BudgetFrequency) =>
   frequency === "bi-weekly" ? (amount * 26) / 12 : amount;
 
 export const calculateTotals = (state: BudgetState) => {
-  const monthlyIncome = toMonthlyAmount(state.income, state.frequencies.income);
+  const monthlyIncome = calculateOntarioNetIncomeFromInput({
+    yearlySalary: state.yearlySalary,
+    bonusType: state.bonusType,
+    bonusValue: state.bonusValue
+  }).monthlyNetIncome;
   const totalExpenses = state.expenses.reduce(
     (sum, row) => sum + toMonthlyAmount(row.amount, row.frequency),
     0

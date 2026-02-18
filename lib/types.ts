@@ -1,4 +1,5 @@
 export type BudgetFrequency = "monthly" | "bi-weekly";
+export type BonusType = "none" | "amount" | "percentage";
 
 export type ExpenseItem = {
   name: string;
@@ -7,7 +8,6 @@ export type ExpenseItem = {
 };
 
 export type BudgetFrequencies = {
-  income: BudgetFrequency;
   investments: BudgetFrequency;
 };
 
@@ -18,7 +18,9 @@ export type InvestmentState = {
 };
 
 export type BudgetState = {
-  income: number;
+  yearlySalary: number;
+  bonusType: BonusType;
+  bonusValue: number;
   expenses: ExpenseItem[];
   investments: InvestmentState;
   frequencies: BudgetFrequencies;
