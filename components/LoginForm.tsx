@@ -101,21 +101,21 @@ export default function LoginForm({ allowSignup, allowDevLogin }: LoginFormProps
   };
 
   return (
-    <section className="w-full max-w-md rounded-2xl border border-forest-200 bg-white p-8 shadow-card">
+    <section className="card w-full max-w-md p-8">
       <div className="mb-8 space-y-2">
-        <p className="text-xs uppercase tracking-[0.22em] text-forest-600">Budget Tool</p>
-        <h1 className="text-3xl font-semibold">Personal Budget</h1>
+        <p className="caps-label text-xs font-semibold uppercase text-forest-600">Budget Tool</p>
+        <h1 className="text-3xl font-semibold tracking-[-0.02em]">Personal Budget</h1>
         <p className="text-sm text-forest-700/80">Sign in to access your private budget.</p>
       </div>
 
-      <div className="mb-6 flex gap-2 rounded-lg bg-paper p-1">
+      <div className="mb-6 flex gap-2 rounded-lg border border-forest-200/70 bg-paper/80 p-1">
         <button
           type="button"
           onClick={() => setMode("login")}
-          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
+          className={`btn h-10 flex-1 rounded-md px-3 py-2 text-sm font-medium ${
             mode === "login"
-              ? "bg-forest-900 text-white"
-              : "text-forest-700 hover:bg-forest-100"
+              ? "bg-forest-900 text-white shadow-sm focus-visible:ring-forest-500"
+              : "bg-transparent text-forest-700 hover:bg-forest-100/80 focus-visible:ring-forest-400"
           }`}
         >
           Login
@@ -124,10 +124,10 @@ export default function LoginForm({ allowSignup, allowDevLogin }: LoginFormProps
           type="button"
           disabled={!canUseSignup}
           onClick={() => setMode("signup")}
-          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
+          className={`btn h-10 flex-1 rounded-md px-3 py-2 text-sm font-medium ${
             mode === "signup"
-              ? "bg-forest-900 text-white"
-              : "text-forest-700 hover:bg-forest-100"
+              ? "bg-forest-900 text-white shadow-sm focus-visible:ring-forest-500"
+              : "bg-transparent text-forest-700 hover:bg-forest-100/80 focus-visible:ring-forest-400"
           } disabled:cursor-not-allowed disabled:opacity-45`}
         >
           Sign Up
@@ -142,7 +142,7 @@ export default function LoginForm({ allowSignup, allowDevLogin }: LoginFormProps
             value={username}
             autoComplete="username"
             onChange={(event) => setUsername(event.target.value)}
-            className="w-full rounded-lg border border-forest-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-forest-500"
+            className="input"
             placeholder="your-name"
             required
           />
@@ -155,7 +155,7 @@ export default function LoginForm({ allowSignup, allowDevLogin }: LoginFormProps
             value={password}
             autoComplete={mode === "login" ? "current-password" : "new-password"}
             onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded-lg border border-forest-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-forest-500"
+            className="input"
             placeholder="********"
             required
           />
@@ -183,7 +183,7 @@ export default function LoginForm({ allowSignup, allowDevLogin }: LoginFormProps
         <button
           type="submit"
           disabled={loading || devLoading}
-          className="w-full rounded-lg bg-forest-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-forest-800 disabled:cursor-not-allowed disabled:opacity-60"
+          className="btn-primary w-full"
         >
           {loading ? "Please wait..." : submitLabel}
         </button>
@@ -193,7 +193,7 @@ export default function LoginForm({ allowSignup, allowDevLogin }: LoginFormProps
             type="button"
             disabled={loading || devLoading}
             onClick={handleDevLogin}
-            className="w-full rounded-lg border border-forest-300 px-4 py-2.5 text-sm font-semibold text-forest-800 transition hover:bg-forest-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="btn-secondary w-full"
           >
             {devLoading ? "Opening development session..." : "Continue as Dev User"}
           </button>

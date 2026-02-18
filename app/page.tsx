@@ -10,7 +10,7 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-10">
+    <main className="flex min-h-screen items-center justify-center px-4 py-12">
       <LoginForm
         allowSignup={process.env.ALLOW_SIGNUP === "true"}
         allowDevLogin={isDevLoginEnabled()}

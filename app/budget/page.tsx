@@ -10,7 +10,7 @@ export default async function BudgetPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:py-12">
+    <main className="min-h-screen px-4 py-10 md:py-12">
       <BudgetApp username={user.username} />
     </main>
   );

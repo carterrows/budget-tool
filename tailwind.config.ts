@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import defaultTheme from "tailwindcss/defaultTheme";
 
 const config: Config = {
   content: [
@@ -8,6 +9,11 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-sans)", ...defaultTheme.fontFamily.sans],
+        serif: ["var(--font-serif)", ...defaultTheme.fontFamily.serif],
+        display: ["var(--font-serif)", ...defaultTheme.fontFamily.serif]
+      },
       colors: {
         paper: "#f7f5f2",
         forest: {
