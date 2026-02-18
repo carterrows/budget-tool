@@ -34,6 +34,7 @@ This version stores one current budget state per user and keeps user data isolat
    ```
 3. Note:
    - `docker-compose.yml` is production-oriented: binds to `127.0.0.1:4050` and sets `SECURE_COOKIES=true`.
+   - Production API rate limiting is enabled for all `/api/*` routes, with stricter limits on `/api/auth/*`.
    - For local HTTP testing, use:
      ```bash
      docker compose -f docker-compose-dev.yml up --build -d
@@ -42,12 +43,16 @@ This version stores one current budget state per user and keeps user data isolat
 ## Create Initial Users
 This app uses a **Create Account (Sign Up) page** guarded by `ALLOW_SIGNUP`.
 
-- In `docker-compose.yml`, keep:
+- Production compose defaults to:
+  ```yaml
+  ALLOW_SIGNUP: "false"
+  ```
+- To create initial users, temporarily set:
   ```yaml
   ALLOW_SIGNUP: "true"
   ```
-- Visit `/` and create accounts (for you and your girlfriend).
-- After both accounts exist, set:
+- Visit `/` and create accounts.
+- Set it back to:
   ```yaml
   ALLOW_SIGNUP: "false"
   ```
@@ -68,6 +73,18 @@ Username rules:
   - Dev compose uses `SECURE_COOKIES: "false"` for plain HTTP testing
 
 State is stored per user in `states.state_json` and overwritten on each save (no month history in v1).
+
+## API Rate Limits
+Rate limits apply to all API routes:
+- `/api/auth/*`: 15 requests per 60 seconds per client IP
+- Other `/api/*`: 120 requests per 60 seconds per client IP
+
+Optional production overrides in `docker-compose.yml`:
+```yaml
+API_RATE_LIMIT_WINDOW_MS: "60000"
+API_RATE_LIMIT_GENERAL_MAX: "120"
+API_RATE_LIMIT_AUTH_MAX: "15"
+```
 
 ## Backup
 Back up by copying `/data/budget.db` from the container volume.

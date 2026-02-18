@@ -6,9 +6,11 @@ import { getDb } from "./db";
 
 export const SESSION_COOKIE_NAME = "budget_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+const SESSION_CLEANUP_INTERVAL_MS = 1000 * 60 * 5;
 const USE_SECURE_COOKIES = process.env.SECURE_COOKIES === "true";
 const DEV_USERNAME_PATTERN = /^[a-z0-9_-]{3,32}$/;
 const DEFAULT_DEV_USERNAME = "dev-user";
+let lastSessionCleanupAt = 0;
 
 export type AuthUser = {
   id: number;
@@ -26,8 +28,14 @@ const hashToken = (token: string) => createHash("sha256").update(token).digest("
 const nowIso = () => new Date().toISOString();
 
 const deleteExpiredSessions = () => {
+  const now = Date.now();
+  if (now - lastSessionCleanupAt < SESSION_CLEANUP_INTERVAL_MS) {
+    return;
+  }
+
+  lastSessionCleanupAt = now;
   const db = getDb();
-  db.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(nowIso());
+  db.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(new Date(now).toISOString());
 };
 
 export const normalizeUsername = (input: string) => input.trim().toLowerCase();
@@ -107,6 +115,7 @@ export const getUserFromSessionToken = (token: string): AuthUser | null => {
   deleteExpiredSessions();
 
   const db = getDb();
+  const tokenHash = hashToken(token);
   const row = db
     .prepare(
       `
@@ -117,14 +126,14 @@ export const getUserFromSessionToken = (token: string): AuthUser | null => {
       LIMIT 1
       `
     )
-    .get(hashToken(token)) as SessionRow | undefined;
+    .get(tokenHash) as SessionRow | undefined;
 
   if (!row) {
     return null;
   }
 
   if (new Date(row.expires_at).getTime() <= Date.now()) {
-    db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(hashToken(token));
+    db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(tokenHash);
     return null;
   }
 
