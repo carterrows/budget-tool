@@ -543,6 +543,17 @@ export default function BudgetApp({ username }: BudgetAppProps) {
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
+                  onClick={() => setIsIncomeHelpOpen(true)}
+                  aria-label="How net income is calculated"
+                  title="How net income is calculated"
+                  className="btn-secondary h-9 w-9 px-0 py-0 leading-none"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                    question_mark
+                  </span>
+                </button>
+                <button
+                  type="button"
                   onClick={() =>
                     setIncomeViewMode((current) => (current === "edit" ? "list" : "edit"))
                   }
@@ -557,17 +568,6 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                   ) : (
                     "Edit"
                   )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsIncomeHelpOpen(true)}
-                  aria-label="How net income is calculated"
-                  title="How net income is calculated"
-                  className="btn-secondary h-9 w-9 px-0 py-0 leading-none"
-                >
-                  <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
-                    question_mark
-                  </span>
                 </button>
               </div>
             </div>
