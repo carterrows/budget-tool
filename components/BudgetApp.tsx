@@ -53,6 +53,19 @@ const cad = new Intl.NumberFormat("en-CA", {
   maximumFractionDigits: 2
 });
 
+const EXPENSE_CHART_COLORS = [
+  "#235f46",
+  "#2f7a58",
+  "#42916d",
+  "#5aa683",
+  "#76b99a",
+  "#91c9ae",
+  "#abc9a0",
+  "#c7cf9c",
+  "#dac58d",
+  "#dca97f"
+];
+
 const toNumber = (value: string) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -63,6 +76,9 @@ const clamp = (value: number, min: number, max: number) =>
 
 const normalizeMoney = (value: number, max: number) =>
   Math.round(clamp(value, 0, max) * 100) / 100;
+
+const toMonthlyEquivalent = (amount: number, frequency: BudgetFrequency) =>
+  frequency === "bi-weekly" ? (amount * 26) / 12 : amount;
 
 const selectInputValueOnFocus = (event: FocusEvent<HTMLInputElement>) => {
   const currentValue = toNumber(event.currentTarget.value);
@@ -317,6 +333,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   const [initialized, setInitialized] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isIncomeHelpOpen, setIsIncomeHelpOpen] = useState(false);
+  const [isExpenseChartOpen, setIsExpenseChartOpen] = useState(false);
   const [incomeViewMode, setIncomeViewMode] = useState<ViewMode>("list");
   const [expenseViewMode, setExpenseViewMode] = useState<ViewMode>("list");
   const [expenseSortOrder, setExpenseSortOrder] = useState<ExpenseSortOrder>("desc");
@@ -418,13 +435,14 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   }, [state, initialized, hasPendingEdits]);
 
   useEffect(() => {
-    if (!isIncomeHelpOpen) {
+    if (!isIncomeHelpOpen && !isExpenseChartOpen) {
       return;
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setIsIncomeHelpOpen(false);
+        setIsExpenseChartOpen(false);
       }
     };
 
@@ -433,10 +451,10 @@ export default function BudgetApp({ username }: BudgetAppProps) {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [isIncomeHelpOpen]);
+  }, [isIncomeHelpOpen, isExpenseChartOpen]);
 
   useEffect(() => {
-    if (!isIncomeHelpOpen) {
+    if (!isIncomeHelpOpen && !isExpenseChartOpen) {
       return;
     }
 
@@ -446,7 +464,13 @@ export default function BudgetApp({ username }: BudgetAppProps) {
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [isIncomeHelpOpen]);
+  }, [isIncomeHelpOpen, isExpenseChartOpen]);
+
+  useEffect(() => {
+    if (expenseViewMode === "edit") {
+      setIsExpenseChartOpen(false);
+    }
+  }, [expenseViewMode]);
 
   const totals = useMemo(() => calculateTotals(state), [state]);
   const incomeBreakdown = useMemo(
@@ -476,6 +500,54 @@ export default function BudgetApp({ username }: BudgetAppProps) {
     () => state.expenses.map((expense, index) => ({ expense, index })),
     [state.expenses]
   );
+  const expenseChart = useMemo(() => {
+    const slices = state.expenses
+      .map((expense, index) => ({
+        index,
+        name: expense.name.trim().length > 0 ? expense.name : `Expense ${index + 1}`,
+        frequencyLabel: expense.frequency === "bi-weekly" ? "Bi-weekly" : "Monthly",
+        monthlyAmount: toMonthlyEquivalent(expense.amount, expense.frequency)
+      }))
+      .sort((left, right) => {
+        const amountDiff = right.monthlyAmount - left.monthlyAmount;
+        if (amountDiff === 0) {
+          return left.index - right.index;
+        }
+        return amountDiff;
+      })
+      .map((slice, chartIndex) => ({
+        ...slice,
+        color: EXPENSE_CHART_COLORS[chartIndex % EXPENSE_CHART_COLORS.length]
+      }));
+
+    const totalMonthlyExpenses = slices.reduce((sum, slice) => sum + slice.monthlyAmount, 0);
+    let cursor = 0;
+
+    const slicesWithPercent = slices.map((slice) => {
+      const percentage = totalMonthlyExpenses > 0 ? (slice.monthlyAmount / totalMonthlyExpenses) * 100 : 0;
+      const start = cursor;
+      cursor += percentage;
+      return {
+        ...slice,
+        percentage,
+        start,
+        end: cursor
+      };
+    });
+
+    const chartStops = slicesWithPercent
+      .filter((slice) => slice.percentage > 0)
+      .map((slice) => `${slice.color} ${slice.start}% ${Math.min(slice.end, 100)}%`);
+
+    return {
+      totalMonthlyExpenses,
+      slices: slicesWithPercent,
+      backgroundImage:
+        chartStops.length > 0
+          ? `conic-gradient(${chartStops.join(", ")})`
+          : "conic-gradient(#d8e6de 0 100%)"
+    };
+  }, [state.expenses]);
 
   const logout = async () => {
     setIsLoggingOut(true);
@@ -671,6 +743,19 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Expenses</h2>
               <div className="flex flex-wrap items-center gap-2">
+                {expenseViewMode === "list" ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsExpenseChartOpen(true)}
+                    aria-label="Show expense pie chart"
+                    title="Show expense pie chart"
+                    className="btn-secondary h-10 w-10 px-0 py-0 leading-none"
+                  >
+                    <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                      pie_chart
+                    </span>
+                  </button>
+                ) : null}
                 <select
                   id="expense-sort-order"
                   aria-label="Expense sort order"
@@ -1155,6 +1240,91 @@ export default function BudgetApp({ username }: BudgetAppProps) {
               <p className="tabular-nums mt-2 text-3xl font-semibold text-forest-700">
                 {cad.format(incomeBreakdown.monthlyNetIncome)}
               </p>
+            </div>
+          </article>
+        </div>
+      ) : null}
+
+      {isExpenseChartOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-forest-900/25 p-4 backdrop-blur-sm"
+          onClick={() => setIsExpenseChartOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="expense-chart-title"
+        >
+          <article
+            className="card w-full max-w-3xl p-6 md:p-8"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="caps-label text-xs font-semibold uppercase text-forest-600">
+                  Expenses Breakdown
+                </p>
+                <h3 id="expense-chart-title" className="mt-1 text-2xl font-semibold">
+                  Expense Pie Chart
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsExpenseChartOpen(false)}
+                className="btn-secondary h-9 px-3 py-0 text-sm"
+              >
+                Close
+              </button>
+            </div>
+
+            <p className="mt-3 text-sm text-forest-700/85">
+              Each slice shows that category&apos;s share of your total monthly expenses.
+            </p>
+
+            <div className="mt-6 grid gap-5 lg:grid-cols-[260px_1fr] lg:items-start">
+              <div className="mx-auto">
+                <div
+                  className="relative h-[220px] w-[220px] rounded-full border border-forest-200/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
+                  style={{ backgroundImage: expenseChart.backgroundImage }}
+                >
+                  <div className="absolute inset-[24%] flex flex-col items-center justify-center rounded-full border border-forest-200/80 bg-paper/90 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
+                    <span className="text-xs text-forest-700/80">Monthly total</span>
+                    <span className="tabular-nums mt-1 text-lg font-semibold text-forest-900">
+                      {cad.format(expenseChart.totalMonthlyExpenses)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-hidden rounded-xl border border-forest-200 bg-paper/55">
+                <ul className="divide-y divide-forest-100/90">
+                  {expenseChart.slices.map((slice) => (
+                    <li
+                      key={`expense-chart-${slice.index}`}
+                      className="flex items-center justify-between gap-4 px-4 py-3"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span
+                          className="h-3.5 w-3.5 shrink-0 rounded-full border border-forest-300/70"
+                          style={{ backgroundColor: slice.color }}
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-forest-900">
+                            {slice.name}
+                          </p>
+                          <p className="text-xs text-forest-700/75">{slice.frequencyLabel}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="tabular-nums text-sm font-semibold text-forest-900">
+                          {slice.percentage.toFixed(1)}%
+                        </p>
+                        <p className="tabular-nums text-xs text-forest-700/80">
+                          {cad.format(slice.monthlyAmount)}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </article>
         </div>
