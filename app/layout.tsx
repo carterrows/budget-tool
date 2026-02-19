@@ -1,12 +1,24 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { sourceSans, sourceSerif } from "./fonts";
 import "./globals.css";
 
+export const viewport: Viewport = {
+  themeColor: "#0f766e"
+};
+
 export const metadata: Metadata = {
+  applicationName: "Budget Tool",
   title: "Budget Tool",
   description: "Self-hosted personal budgeting app",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Budget Tool"
+  },
   icons: {
-    icon: "/favicon.svg"
+    icon: "/favicon.svg",
+    apple: "/apple-touch-icon.png"
   }
 };
 
