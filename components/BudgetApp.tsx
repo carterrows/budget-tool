@@ -66,6 +66,10 @@ const EXPENSE_CHART_COLORS = [
   "#dca97f"
 ];
 
+const TFSA_2026_LIMIT = 7000;
+const FHSA_2026_LIMIT = 8000;
+const RRSP_2026_CAP = 33810;
+
 const toNumber = (value: string) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -79,6 +83,9 @@ const normalizeMoney = (value: number, max: number) =>
 
 const toMonthlyEquivalent = (amount: number, frequency: BudgetFrequency) =>
   frequency === "bi-weekly" ? (amount * 26) / 12 : amount;
+
+const toYearlyEquivalent = (amount: number, frequency: BudgetFrequency) =>
+  frequency === "bi-weekly" ? amount * 26 : amount * 12;
 
 const selectInputValueOnFocus = (event: FocusEvent<HTMLInputElement>) => {
   const currentValue = toNumber(event.currentTarget.value);
@@ -334,6 +341,8 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isIncomeHelpOpen, setIsIncomeHelpOpen] = useState(false);
   const [isExpenseChartOpen, setIsExpenseChartOpen] = useState(false);
+  const [isInvestmentHelpOpen, setIsInvestmentHelpOpen] = useState(false);
+  const [rrspIncome2025, setRrspIncome2025] = useState(0);
   const [incomeViewMode, setIncomeViewMode] = useState<ViewMode>("list");
   const [expenseViewMode, setExpenseViewMode] = useState<ViewMode>("list");
   const [expenseSortOrder, setExpenseSortOrder] = useState<ExpenseSortOrder>("desc");
@@ -435,7 +444,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   }, [state, initialized, hasPendingEdits]);
 
   useEffect(() => {
-    if (!isIncomeHelpOpen && !isExpenseChartOpen) {
+    if (!isIncomeHelpOpen && !isExpenseChartOpen && !isInvestmentHelpOpen) {
       return;
     }
 
@@ -443,6 +452,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
       if (event.key === "Escape") {
         setIsIncomeHelpOpen(false);
         setIsExpenseChartOpen(false);
+        setIsInvestmentHelpOpen(false);
       }
     };
 
@@ -451,10 +461,10 @@ export default function BudgetApp({ username }: BudgetAppProps) {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [isIncomeHelpOpen, isExpenseChartOpen]);
+  }, [isIncomeHelpOpen, isExpenseChartOpen, isInvestmentHelpOpen]);
 
   useEffect(() => {
-    if (!isIncomeHelpOpen && !isExpenseChartOpen) {
+    if (!isIncomeHelpOpen && !isExpenseChartOpen && !isInvestmentHelpOpen) {
       return;
     }
 
@@ -464,7 +474,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [isIncomeHelpOpen, isExpenseChartOpen]);
+  }, [isIncomeHelpOpen, isExpenseChartOpen, isInvestmentHelpOpen]);
 
   useEffect(() => {
     if (expenseViewMode === "edit") {
@@ -548,6 +558,65 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           : "conic-gradient(#d8e6de 0 100%)"
     };
   }, [state.expenses]);
+  const investmentLimitGuide = useMemo(() => {
+    const tfsaYearly = toYearlyEquivalent(
+      state.investments.tfsa,
+      state.frequencies.investments.tfsa
+    );
+    const fhsaYearly = toYearlyEquivalent(
+      state.investments.fhsa,
+      state.frequencies.investments.fhsa
+    );
+    const rrspYearly = toYearlyEquivalent(
+      state.investments.rrsp,
+      state.frequencies.investments.rrsp
+    );
+    const rrspBasedOnIncome = rrspIncome2025 * 0.18;
+    const rrspLimit = Math.min(RRSP_2026_CAP, rrspBasedOnIncome);
+
+    return {
+      rrspBasedOnIncome,
+      rrspLimit,
+      entries: [
+        {
+          id: "tfsa",
+          label: "TFSA",
+          yearlyContribution: tfsaYearly,
+          yearlyLimit: TFSA_2026_LIMIT,
+          frequencyLabel:
+            state.frequencies.investments.tfsa === "bi-weekly" ? "Bi-weekly" : "Monthly"
+        },
+        {
+          id: "fhsa",
+          label: "FHSA",
+          yearlyContribution: fhsaYearly,
+          yearlyLimit: FHSA_2026_LIMIT,
+          frequencyLabel:
+            state.frequencies.investments.fhsa === "bi-weekly" ? "Bi-weekly" : "Monthly"
+        },
+        {
+          id: "rrsp",
+          label: "RRSP",
+          yearlyContribution: rrspYearly,
+          yearlyLimit: rrspLimit,
+          frequencyLabel:
+            state.frequencies.investments.rrsp === "bi-weekly" ? "Bi-weekly" : "Monthly"
+        }
+      ].map((entry) => ({
+        ...entry,
+        usagePercent:
+          entry.yearlyLimit > 0 ? (entry.yearlyContribution / entry.yearlyLimit) * 100 : 0
+      }))
+    };
+  }, [
+    rrspIncome2025,
+    state.frequencies.investments.fhsa,
+    state.frequencies.investments.rrsp,
+    state.frequencies.investments.tfsa,
+    state.investments.fhsa,
+    state.investments.rrsp,
+    state.investments.tfsa
+  ]);
 
   const logout = async () => {
     setIsLoggingOut(true);
@@ -923,6 +992,17 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Investments</h2>
               <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsInvestmentHelpOpen(true)}
+                  aria-label="How investment limits are calculated"
+                  title="How investment limits are calculated"
+                  className="btn-secondary h-9 w-9 px-0 py-0 leading-none"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                    question_mark
+                  </span>
+                </button>
                 <button
                   type="button"
                   onClick={() =>
@@ -1325,6 +1405,137 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                   ))}
                 </ul>
               </div>
+            </div>
+          </article>
+        </div>
+      ) : null}
+
+      {isInvestmentHelpOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-forest-900/25 p-4 backdrop-blur-sm"
+          onClick={() => setIsInvestmentHelpOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="investment-help-title"
+        >
+          <article
+            className="card w-full max-w-3xl p-6 md:p-8"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="caps-label text-xs font-semibold uppercase text-forest-600">
+                  Registered Accounts
+                </p>
+                <h3 id="investment-help-title" className="mt-1 text-2xl font-semibold">
+                  Yearly Contribution Limits (2026)
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsInvestmentHelpOpen(false)}
+                className="btn-secondary h-9 px-3 py-0 text-sm"
+              >
+                Close
+              </button>
+            </div>
+
+            <p className="mt-3 text-sm text-forest-700/85">
+              Yearly totals use your selected frequency for TFSA, FHSA, and RRSP. Limits used:
+              TFSA {cad.format(TFSA_2026_LIMIT)}, FHSA {cad.format(FHSA_2026_LIMIT)}, RRSP
+              {` min(${cad.format(RRSP_2026_CAP)}, 18% of 2025 income)`}.
+            </p>
+
+            <div className="mt-5 rounded-xl border border-forest-200 bg-paper/55 p-4">
+              <div className="flex flex-wrap items-end gap-3">
+                <label
+                  htmlFor="rrsp-income-2025"
+                  className="text-sm font-medium text-forest-900"
+                >
+                  2025 income for RRSP limit
+                </label>
+                <div className="relative min-w-[220px] flex-1 md:max-w-[280px]">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
+                    $
+                  </span>
+                  <input
+                    id="rrsp-income-2025"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={rrspIncome2025}
+                    onChange={(event) =>
+                      setRrspIncome2025(Math.max(0, toNumber(event.target.value)))
+                    }
+                    onFocus={selectInputValueOnFocus}
+                    className="input tabular-nums pl-7 pr-3 text-right"
+                  />
+                </div>
+              </div>
+              <p className="tabular-nums mt-2 text-sm text-forest-700/90">
+                18% of 2025 income: {cad.format(investmentLimitGuide.rrspBasedOnIncome)}. RRSP
+                limit used: {cad.format(investmentLimitGuide.rrspLimit)}.
+              </p>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {investmentLimitGuide.entries.map((entry) => {
+                const cappedUsagePercent = Math.min(entry.usagePercent, 100);
+                const isOverLimit =
+                  entry.yearlyLimit > 0 && entry.yearlyContribution > entry.yearlyLimit;
+                const remainingRoom = Math.max(entry.yearlyLimit - entry.yearlyContribution, 0);
+
+                return (
+                  <article
+                    key={entry.id}
+                    className="rounded-xl border border-forest-200 bg-paper/55 p-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-forest-900">{entry.label}</p>
+                        <p className="text-xs text-forest-700/75">
+                          Based on current {entry.frequencyLabel.toLowerCase()} amount
+                        </p>
+                      </div>
+                      <p className="tabular-nums text-sm font-semibold text-forest-900">
+                        {entry.usagePercent.toFixed(1)}%
+                      </p>
+                    </div>
+
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-forest-100">
+                      <div
+                        className={`h-full rounded-full ${
+                          isOverLimit ? "bg-rose-500" : "bg-forest-600"
+                        }`}
+                        style={{ width: `${cappedUsagePercent}%` }}
+                      />
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-forest-700/90">
+                      <span className="tabular-nums">
+                        Yearly contribution: {cad.format(entry.yearlyContribution)}
+                      </span>
+                      <span className="tabular-nums">
+                        Limit: {cad.format(entry.yearlyLimit)}
+                      </span>
+                    </div>
+
+                    {entry.id === "rrsp" && entry.yearlyLimit === 0 ? (
+                      <p className="mt-2 text-xs text-forest-700/80">
+                        Enter 2025 income above to calculate RRSP room.
+                      </p>
+                    ) : isOverLimit ? (
+                      <p className="tabular-nums mt-2 text-xs text-rose-700">
+                        Over limit by {cad.format(entry.yearlyContribution - entry.yearlyLimit)}.
+                      </p>
+                    ) : (
+                      <p className="tabular-nums mt-2 text-xs text-forest-700/85">
+                        Remaining room: {cad.format(remainingRoom)}.
+                      </p>
+                    )}
+                  </article>
+                );
+              })}
             </div>
           </article>
         </div>
