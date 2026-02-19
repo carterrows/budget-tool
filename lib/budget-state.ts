@@ -11,6 +11,7 @@ export const DEFAULT_STATE: BudgetState = {
   yearlySalary: 0,
   bonusType: "none",
   bonusValue: 0,
+  rrspIncome2025: 0,
   expenses: [{ name: "Expense", amount: 0, frequency: "monthly" }],
   investments: {
     tfsa: 0,
@@ -124,6 +125,7 @@ export const sanitizeBudgetState = (input: unknown): BudgetState => {
     yearlySalary: normalizeAmount(candidate.yearlySalary, MAX_YEARLY_SALARY),
     bonusType,
     bonusValue: normalizeBonusValue(candidate.bonusValue, bonusType),
+    rrspIncome2025: normalizeAmount(candidate.rrspIncome2025, MAX_YEARLY_SALARY),
     expenses,
     investments: {
       tfsa: normalizeAmount(
