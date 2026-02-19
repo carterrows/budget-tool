@@ -74,14 +74,17 @@ export async function POST(request: Request) {
     setSessionCookie(response, token, expiresAt);
     return response;
   } catch (error: unknown) {
-    const message =
+    const isUniqueViolation =
       typeof error === "object" &&
       error &&
       "code" in error &&
-      (error as { code?: string }).code === "SQLITE_CONSTRAINT_UNIQUE"
-        ? "Username already exists."
-        : "Unable to create account.";
+      (error as { code?: string }).code === "SQLITE_CONSTRAINT_UNIQUE";
 
-    return NextResponse.json({ error: message }, { status: 409 });
+    return NextResponse.json(
+      {
+        error: isUniqueViolation ? "Username already exists." : "Unable to create account."
+      },
+      { status: isUniqueViolation ? 409 : 500 }
+    );
   }
 }

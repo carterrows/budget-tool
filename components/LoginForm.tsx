@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type LoginFormProps = {
@@ -19,11 +19,7 @@ export default function LoginForm({ allowSignup, allowDevLogin }: LoginFormProps
   const [devLoading, setDevLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const canUseSignup = allowSignup;
-  const submitLabel = useMemo(
-    () => (mode === "login" ? "Sign In" : "Create Account"),
-    [mode]
-  );
+  const submitLabel = mode === "login" ? "Sign In" : "Create Account";
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -33,7 +29,7 @@ export default function LoginForm({ allowSignup, allowDevLogin }: LoginFormProps
       return;
     }
 
-    if (mode === "signup" && !canUseSignup) {
+    if (mode === "signup" && !allowSignup) {
       setError("Sign up is disabled.");
       return;
     }
@@ -122,7 +118,7 @@ export default function LoginForm({ allowSignup, allowDevLogin }: LoginFormProps
         </button>
         <button
           type="button"
-          disabled={!canUseSignup}
+          disabled={!allowSignup}
           onClick={() => setMode("signup")}
           className={`btn h-10 flex-1 rounded-md px-3 py-2 text-sm font-medium ${
             mode === "signup"
@@ -167,7 +163,7 @@ export default function LoginForm({ allowSignup, allowDevLogin }: LoginFormProps
           </p>
         )}
 
-        {!canUseSignup && (
+        {!allowSignup && (
           <p className="text-xs text-forest-700/80">
             Sign up disabled.
           </p>
