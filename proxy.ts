@@ -48,6 +48,33 @@ const AUTH_POLICY: RateLimitPolicy = {
 const rateLimitBuckets = new Map<string, RateLimitBucket>();
 let lastCleanupAt = 0;
 
+const API_CONTENT_SECURITY_POLICY = [
+  "default-src 'none'",
+  "base-uri 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'"
+].join("; ");
+
+const API_PERMISSIONS_POLICY = [
+  "accelerometer=()",
+  "autoplay=()",
+  "camera=()",
+  "display-capture=()",
+  "encrypted-media=()",
+  "fullscreen=()",
+  "geolocation=()",
+  "gyroscope=()",
+  "magnetometer=()",
+  "microphone=()",
+  "midi=()",
+  "payment=()",
+  "picture-in-picture=()",
+  "publickey-credentials-get=()",
+  "screen-wake-lock=()",
+  "usb=()",
+  "xr-spatial-tracking=()"
+].join(", ");
+
 const isAuthPath = (pathname: string) => pathname.startsWith("/api/auth/");
 
 const getPolicy = (pathname: string) => (isAuthPath(pathname) ? AUTH_POLICY : GENERAL_POLICY);
@@ -89,6 +116,11 @@ const applyApiSecurityHeaders = (response: NextResponse) => {
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("Referrer-Policy", "same-origin");
+  response.headers.set("Content-Security-Policy", API_CONTENT_SECURITY_POLICY);
+  response.headers.set("Permissions-Policy", API_PERMISSIONS_POLICY);
+  response.headers.set("Cross-Origin-Opener-Policy", "same-origin");
+  response.headers.set("Cross-Origin-Resource-Policy", "same-origin");
+  response.headers.set("X-DNS-Prefetch-Control", "off");
 };
 
 const applyRateLimitHeaders = (
