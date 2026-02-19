@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
   if (process.env.ALLOW_SIGNUP !== "true") {
     return NextResponse.json(
-      { error: "Sign up is disabled. Set ALLOW_SIGNUP=true to enable it." },
+      { error: "Sign up is disabled." },
       { status: 403 }
     );
   }
