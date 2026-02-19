@@ -472,6 +472,10 @@ export default function BudgetApp({ username }: BudgetAppProps) {
         }),
     [state.expenses, expenseSortOrder]
   );
+  const editableExpenses = useMemo(
+    () => state.expenses.map((expense, index) => ({ expense, index })),
+    [state.expenses]
+  );
 
   const logout = async () => {
     setIsLoggingOut(true);
@@ -537,38 +541,23 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Income</h2>
               <div className="flex flex-wrap items-center gap-2">
-                <div
-                  className="inline-flex rounded-lg border border-forest-200 bg-paper/70 p-1"
-                  role="tablist"
-                  aria-label="Income view mode"
+                <button
+                  type="button"
+                  onClick={() =>
+                    setIncomeViewMode((current) => (current === "edit" ? "list" : "edit"))
+                  }
+                  aria-label={incomeViewMode === "edit" ? "Confirm income edits" : "Edit income"}
+                  title={incomeViewMode === "edit" ? "Confirm income edits" : "Edit income"}
+                  className="btn-primary flex h-10 w-14 items-center justify-center px-0 py-0 text-sm font-medium"
                 >
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={incomeViewMode === "list"}
-                    onClick={() => setIncomeViewMode("list")}
-                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                      incomeViewMode === "list"
-                        ? "bg-forest-700 text-white"
-                        : "text-forest-700 hover:bg-forest-100/70"
-                    }`}
-                  >
-                    List view
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={incomeViewMode === "edit"}
-                    onClick={() => setIncomeViewMode("edit")}
-                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                      incomeViewMode === "edit"
-                        ? "bg-forest-700 text-white"
-                        : "text-forest-700 hover:bg-forest-100/70"
-                    }`}
-                  >
-                    Edit view
-                  </button>
-                </div>
+                  {incomeViewMode === "edit" ? (
+                    <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                      check
+                    </span>
+                  ) : (
+                    "Edit"
+                  )}
+                </button>
                 <button
                   type="button"
                   onClick={() => setIsIncomeHelpOpen(true)}
@@ -635,7 +624,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             ) : (
               <div className="space-y-3">
                 <p className="text-sm text-forest-700/80">
-                  Read-only summary. Switch to Edit view to make changes.
+                  Read-only summary. Press Edit to make changes.
                 </p>
                 <div className="overflow-hidden rounded-xl border border-forest-100 bg-paper/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]">
                   <ul className="divide-y divide-forest-100/90">
@@ -703,44 +692,29 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                     + Add expense
                   </button>
                 ) : null}
-                <div
-                  className="inline-flex rounded-lg border border-forest-200 bg-paper/70 p-1"
-                  role="tablist"
-                  aria-label="Expense view mode"
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpenseViewMode((current) => (current === "edit" ? "list" : "edit"))
+                  }
+                  aria-label={expenseViewMode === "edit" ? "Confirm expense edits" : "Edit expenses"}
+                  title={expenseViewMode === "edit" ? "Confirm expense edits" : "Edit expenses"}
+                  className="btn-primary flex h-10 w-14 items-center justify-center px-0 py-0 text-sm font-medium"
                 >
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={expenseViewMode === "list"}
-                    onClick={() => setExpenseViewMode("list")}
-                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                      expenseViewMode === "list"
-                        ? "bg-forest-700 text-white"
-                        : "text-forest-700 hover:bg-forest-100/70"
-                    }`}
-                  >
-                    List view
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={expenseViewMode === "edit"}
-                    onClick={() => setExpenseViewMode("edit")}
-                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                      expenseViewMode === "edit"
-                        ? "bg-forest-700 text-white"
-                        : "text-forest-700 hover:bg-forest-100/70"
-                    }`}
-                  >
-                    Edit view
-                  </button>
-                </div>
+                  {expenseViewMode === "edit" ? (
+                    <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                      check
+                    </span>
+                  ) : (
+                    "Edit"
+                  )}
+                </button>
               </div>
             </div>
 
             {expenseViewMode === "edit" ? (
               <div className="space-y-4">
-                {sortedExpenses.map(({ expense, index }) => (
+                {editableExpenses.map(({ expense, index }) => (
                   <article
                     key={`expense-${index}`}
                     className="rounded-xl border border-forest-100 bg-paper/70 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]"
@@ -830,7 +804,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             ) : (
               <div className="space-y-3">
                 <p className="text-sm text-forest-700/80">
-                  Read-only summary. Switch to Edit view to make changes.
+                  Read-only summary. Press Edit to make changes.
                 </p>
                 <div className="overflow-hidden rounded-xl border border-forest-100 bg-paper/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]">
                   <ul className="divide-y divide-forest-100/90">
@@ -864,38 +838,31 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Investments</h2>
               <div className="flex flex-wrap items-center gap-2">
-                <div
-                  className="inline-flex rounded-lg border border-forest-200 bg-paper/70 p-1"
-                  role="tablist"
-                  aria-label="Investment view mode"
+                <button
+                  type="button"
+                  onClick={() =>
+                    setInvestmentViewMode((current) => (current === "edit" ? "list" : "edit"))
+                  }
+                  aria-label={
+                    investmentViewMode === "edit"
+                      ? "Confirm investment edits"
+                      : "Edit investments"
+                  }
+                  title={
+                    investmentViewMode === "edit"
+                      ? "Confirm investment edits"
+                      : "Edit investments"
+                  }
+                  className="btn-primary flex h-10 w-14 items-center justify-center px-0 py-0 text-sm font-medium"
                 >
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={investmentViewMode === "list"}
-                    onClick={() => setInvestmentViewMode("list")}
-                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                      investmentViewMode === "list"
-                        ? "bg-forest-700 text-white"
-                        : "text-forest-700 hover:bg-forest-100/70"
-                    }`}
-                  >
-                    List view
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={investmentViewMode === "edit"}
-                    onClick={() => setInvestmentViewMode("edit")}
-                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                      investmentViewMode === "edit"
-                        ? "bg-forest-700 text-white"
-                        : "text-forest-700 hover:bg-forest-100/70"
-                    }`}
-                  >
-                    Edit view
-                  </button>
-                </div>
+                  {investmentViewMode === "edit" ? (
+                    <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                      check
+                    </span>
+                  ) : (
+                    "Edit"
+                  )}
+                </button>
               </div>
             </div>
             {investmentViewMode === "edit" ? (
@@ -996,7 +963,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             ) : (
               <div className="space-y-3">
                 <p className="text-sm text-forest-700/80">
-                  Read-only summary. Switch to Edit view to make changes.
+                  Read-only summary. Press Edit to make changes.
                 </p>
                 <div className="overflow-hidden rounded-xl border border-forest-100 bg-paper/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]">
                   <ul className="divide-y divide-forest-100/90">
