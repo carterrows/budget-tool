@@ -9,6 +9,7 @@ import {
   useState
 } from "react";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import {
   DEFAULT_STATE,
   MAX_BONUS_AMOUNT,
@@ -69,6 +70,10 @@ const EXPENSE_CHART_COLORS = [
 const TFSA_2026_LIMIT = 7000;
 const FHSA_2026_LIMIT = 8000;
 const RRSP_2026_CAP = 33810;
+const MODAL_OVERLAY_CLASS =
+  "fixed inset-0 z-50 flex h-[100dvh] w-screen items-center justify-center overflow-y-auto overscroll-contain bg-forest-900/30 px-3 py-4 backdrop-blur-md sm:px-4 sm:py-6 md:px-6 md:py-8";
+const MODAL_PANEL_CLASS =
+  "card w-full max-w-3xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-5 sm:p-6 md:max-h-[calc(100dvh-4rem)] md:p-8";
 
 const toNumber = (value: string) => {
   const parsed = Number(value);
@@ -330,6 +335,34 @@ type BudgetAppProps = {
   username: string;
 };
 
+type ModalOverlayProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  labelledBy: string;
+  children: ReactNode;
+};
+
+function ModalOverlay({ isOpen, onClose, labelledBy, children }: ModalOverlayProps) {
+  if (!isOpen || typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      className={MODAL_OVERLAY_CLASS}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={labelledBy}
+    >
+      <article className={MODAL_PANEL_CLASS} onClick={(event) => event.stopPropagation()}>
+        {children}
+      </article>
+    </div>,
+    document.body
+  );
+}
+
 export default function BudgetApp({ username }: BudgetAppProps) {
   const router = useRouter();
   const [state, dispatch] = useReducer(reducer, DEFAULT_STATE);
@@ -468,11 +501,14 @@ export default function BudgetApp({ username }: BudgetAppProps) {
       return;
     }
 
-    const previousOverflow = document.body.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
     };
   }, [isIncomeHelpOpen, isExpenseChartOpen, isInvestmentHelpOpen]);
 
@@ -1227,18 +1263,11 @@ export default function BudgetApp({ username }: BudgetAppProps) {
         </aside>
       </div>
 
-      {isIncomeHelpOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-forest-900/25 p-4 backdrop-blur-sm"
-          onClick={() => setIsIncomeHelpOpen(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="income-help-title"
-        >
-          <article
-            className="card w-full max-w-3xl p-6 md:p-8"
-            onClick={(event) => event.stopPropagation()}
-          >
+      <ModalOverlay
+        isOpen={isIncomeHelpOpen}
+        onClose={() => setIsIncomeHelpOpen(false)}
+        labelledBy="income-help-title"
+      >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="caps-label text-xs font-semibold uppercase text-forest-600">
@@ -1321,22 +1350,13 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                 {cad.format(incomeBreakdown.monthlyNetIncome)}
               </p>
             </div>
-          </article>
-        </div>
-      ) : null}
+      </ModalOverlay>
 
-      {isExpenseChartOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-forest-900/25 p-4 backdrop-blur-sm"
-          onClick={() => setIsExpenseChartOpen(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="expense-chart-title"
-        >
-          <article
-            className="card w-full max-w-3xl p-6 md:p-8"
-            onClick={(event) => event.stopPropagation()}
-          >
+      <ModalOverlay
+        isOpen={isExpenseChartOpen}
+        onClose={() => setIsExpenseChartOpen(false)}
+        labelledBy="expense-chart-title"
+      >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="caps-label text-xs font-semibold uppercase text-forest-600">
@@ -1406,22 +1426,13 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                 </ul>
               </div>
             </div>
-          </article>
-        </div>
-      ) : null}
+      </ModalOverlay>
 
-      {isInvestmentHelpOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-forest-900/25 p-4 backdrop-blur-sm"
-          onClick={() => setIsInvestmentHelpOpen(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="investment-help-title"
-        >
-          <article
-            className="card w-full max-w-3xl p-6 md:p-8"
-            onClick={(event) => event.stopPropagation()}
-          >
+      <ModalOverlay
+        isOpen={isInvestmentHelpOpen}
+        onClose={() => setIsInvestmentHelpOpen(false)}
+        labelledBy="investment-help-title"
+      >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="caps-label text-xs font-semibold uppercase text-forest-600">
@@ -1537,9 +1548,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                 );
               })}
             </div>
-          </article>
-        </div>
-      ) : null}
+      </ModalOverlay>
     </section>
   );
 }
