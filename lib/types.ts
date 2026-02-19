@@ -27,6 +27,7 @@ export type BudgetState = {
   yearlySalary: number;
   bonusType: BonusType;
   bonusValue: number;
+  rrspIncome2025: number;
   expenses: ExpenseItem[];
   investments: InvestmentState;
   frequencies: BudgetFrequencies;

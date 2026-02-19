@@ -28,6 +28,7 @@ type Action =
   | { type: "set-yearly-salary"; amount: number }
   | { type: "set-bonus-type"; bonusType: BonusType }
   | { type: "set-bonus-value"; amount: number }
+  | { type: "set-rrsp-income-2025"; amount: number }
   | { type: "add-expense" }
   | { type: "remove-expense"; index: number }
   | { type: "set-expense-name"; index: number; name: string }
@@ -129,6 +130,11 @@ const reducer = (state: BudgetState, action: Action): BudgetState => {
             : state.bonusType === "percentage"
               ? normalizeMoney(action.amount, MAX_BONUS_PERCENT)
               : 0
+      };
+    case "set-rrsp-income-2025":
+      return {
+        ...state,
+        rrspIncome2025: normalizeMoney(action.amount, MAX_YEARLY_SALARY)
       };
     case "set-investment-frequency":
       return {
@@ -375,7 +381,6 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   const [isIncomeHelpOpen, setIsIncomeHelpOpen] = useState(false);
   const [isExpenseChartOpen, setIsExpenseChartOpen] = useState(false);
   const [isInvestmentHelpOpen, setIsInvestmentHelpOpen] = useState(false);
-  const [rrspIncome2025, setRrspIncome2025] = useState(0);
   const [incomeViewMode, setIncomeViewMode] = useState<ViewMode>("list");
   const [expenseViewMode, setExpenseViewMode] = useState<ViewMode>("list");
   const [expenseSortOrder, setExpenseSortOrder] = useState<ExpenseSortOrder>("desc");
@@ -607,7 +612,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
       state.investments.rrsp,
       state.frequencies.investments.rrsp
     );
-    const rrspBasedOnIncome = rrspIncome2025 * 0.18;
+    const rrspBasedOnIncome = state.rrspIncome2025 * 0.18;
     const rrspLimit = Math.min(RRSP_2026_CAP, rrspBasedOnIncome);
 
     return {
@@ -645,7 +650,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
       }))
     };
   }, [
-    rrspIncome2025,
+    state.rrspIncome2025,
     state.frequencies.investments.fhsa,
     state.frequencies.investments.rrsp,
     state.frequencies.investments.tfsa,
@@ -1474,9 +1479,12 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                     type="number"
                     min={0}
                     step={1}
-                    value={rrspIncome2025}
+                    value={state.rrspIncome2025}
                     onChange={(event) =>
-                      setRrspIncome2025(Math.max(0, toNumber(event.target.value)))
+                      safeDispatch({
+                        type: "set-rrsp-income-2025",
+                        amount: Math.max(0, toNumber(event.target.value))
+                      })
                     }
                     onFocus={selectInputValueOnFocus}
                     className="input tabular-nums pl-7 pr-3 text-right"
