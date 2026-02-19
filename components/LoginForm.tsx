@@ -169,8 +169,7 @@ export default function LoginForm({ allowSignup, allowDevLogin }: LoginFormProps
 
         {!canUseSignup && (
           <p className="text-xs text-forest-700/80">
-            Sign up disabled. Set <code>ALLOW_SIGNUP=true</code> to enable account
-            creation.
+            Sign up disabled.
           </p>
         )}
 
