@@ -1,0 +1,10 @@
+{
+  "name": "Budget Tool",
+  "short_name": "Budget",
+  "description": "Self-hosted personal budgeting app",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0f766e"
+}
