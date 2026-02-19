@@ -3,7 +3,7 @@
 ## Project Snapshot
 - Name: `budget-tool`
 - Purpose: self-hosted personal budgeting app with per-user saved state.
-- Stack: Next.js App Router, React 19, TypeScript, Tailwind CSS, SQLite (`better-sqlite3`), cookie sessions.
+- Stack: Next.js App Router (`next@16`), React 19, TypeScript, Tailwind CSS, SQLite (`better-sqlite3`), cookie sessions.
 - Deployment model: single Next.js service, usually run in Docker.
 
 ## Runtime and Build
@@ -21,12 +21,13 @@
 - `app/page.tsx`: login/signup landing page.
 - `app/budget/page.tsx`: authenticated budget UI page.
 - `components/LoginForm.tsx`: login/signup/dev-login client form.
-- `components/BudgetApp.tsx`: main budget editor UI + autosave + summary.
+- `components/BudgetApp.tsx`: main budget editor UI + autosave + monthly summary.
 - `app/api/auth/*`: auth endpoints (`login`, `signup`, `logout`, `dev-login`).
 - `app/api/me/route.ts`: current authenticated user.
 - `app/api/state/route.ts`: load/save budget state.
 - `lib/db.ts`: SQLite connection + schema bootstrap.
 - `lib/auth.ts`: password hashing, sessions, cookie helpers, dev login helpers.
+- `lib/csrf.ts`: same-origin check for mutating requests.
 - `lib/budget-state.ts`: state defaults, validation/sanitization, totals.
 - `lib/tax.ts`: Ontario 2026 tax/deduction model.
 - `proxy.ts`: `/api/*` rate limiting + API security headers.
@@ -44,7 +45,7 @@ Tables created in `lib/db.ts`:
 Behavior:
 - Per-user budget state is stored as JSON in `states.state_json`.
 - State is upserted and overwritten on each save (single current snapshot per user).
-- Session cleanup of expired rows runs periodically in-process.
+- Session cleanup of expired rows runs periodically in-process (every ~5 minutes when requests occur).
 
 ## Auth and Session Model
 - Session cookie name: `budget_session`.
@@ -82,20 +83,22 @@ Key limits:
 - bonus amount `<= 100000`
 - bonus percent `<= 100`
 - each expense `<= 10000`
-- each investment bucket (`tfsa/fhsa/rrsp`) `<= 10000`
+- each investment bucket (`tfsa/fhsa/rrsp/emergencyFund`) `<= 10000`
 
 Frequency options:
-- `"monthly"` or `"bi-weekly"` (converted to monthly equivalent in totals).
+- `"monthly"` or `"bi-weekly"` for each expense and each investment bucket (converted to monthly equivalents in totals).
 
 Client behavior:
 - `components/BudgetApp.tsx` autosaves with ~800ms debounce after edits.
 - Summary computes monthly net income, expenses, investments, leftover cash.
+- Income section includes an Ontario 2026 after-tax breakdown modal.
 
 ## Rate Limiting and Security Headers
 `proxy.ts` applies to `/api/:path*`:
 - Auth endpoints (`/api/auth/*`): stricter rate limit.
 - Other API endpoints: general rate limit.
 - Adds `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`.
+- Also sets `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and `Retry-After` on `429`.
 - Configurable with env vars below.
 
 ## Environment Variables
@@ -104,7 +107,7 @@ Client behavior:
 - `DATABASE_PATH` (default `/data/budget.db`)
 - `ALLOW_SIGNUP` (`"true"`/`"false"`)
 - `SECURE_COOKIES` (`"true"`/`"false"`)
-- `DEV_LOGIN_ENABLED` (`"false"` disables dev login in dev)
+- `DEV_LOGIN_ENABLED` (`"false"` disables dev login outside production)
 - `DEV_LOGIN_USERNAME` (defaults to `dev-user`)
 - `API_RATE_LIMIT_WINDOW_MS` (default `60000`)
 - `API_RATE_LIMIT_GENERAL_MAX` (default `120`)
@@ -114,14 +117,18 @@ Client behavior:
 - Production compose (`docker-compose.yml`):
   - binds `127.0.0.1:4050:4050`
   - uses named volume `budget_data` mounted at `/data`
+  - sets `NODE_ENV: production`
+  - sets `ALLOW_SIGNUP: "false"`
   - sets `SECURE_COOKIES: "true"`
   - sets API rate limit env vars
-  - currently sets `ALLOW_SIGNUP: "true"` in file
 - Dev compose (`docker-compose-dev.yml`):
+  - sets `NODE_ENV: production`
   - binds `4050:4050`
+  - sets `ALLOW_SIGNUP: "true"`
   - uses `SECURE_COOKIES: "false"`
+  - keeps `platform: linux/arm64`
 
 ## Known Context/Gotchas
-- `README.md` text about production `ALLOW_SIGNUP` may differ from current `docker-compose.yml`; check compose file as source of truth.
 - There is no automated test suite in this repo right now.
+- `docker-compose-dev.yml` uses `NODE_ENV: production`, so dev login is disabled there unless compose env is changed.
 - If adding DB-using API routes, keep Node runtime and server-only imports (`better-sqlite3`).
