@@ -98,6 +98,7 @@ Client behavior:
 - Auth endpoints (`/api/auth/*`): stricter rate limit.
 - Other API endpoints: general rate limit.
 - Adds `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`.
+- Adds `Content-Security-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`, and `X-DNS-Prefetch-Control`.
 - Also sets `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and `Retry-After` on `429`.
 - Configurable with env vars below.
 
