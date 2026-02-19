@@ -17,9 +17,17 @@ export type AuthUser = {
   username: string;
 };
 
+export type AuthSession = {
+  sessionId: number;
+  user: AuthUser;
+  activePlanId: number | null;
+};
+
 type SessionRow = {
+  session_id: number;
   user_id: number;
   username: string;
+  active_plan_id: number | null;
   expires_at: string;
 };
 
@@ -90,7 +98,7 @@ export const getOrCreateDevUser = async (): Promise<AuthUser> => {
   }
 };
 
-export const createSession = (userId: number) => {
+export const createSession = (userId: number, activePlanId: number | null = null) => {
   deleteExpiredSessions();
 
   const db = getDb();
@@ -100,8 +108,11 @@ export const createSession = (userId: number) => {
   const expiresAt = new Date(createdAt.getTime() + SESSION_TTL_MS);
 
   db.prepare(
-    "INSERT INTO sessions (user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?)"
-  ).run(userId, tokenHash, expiresAt.toISOString(), createdAt.toISOString());
+    `
+    INSERT INTO sessions (user_id, token_hash, active_plan_id, expires_at, created_at)
+    VALUES (?, ?, ?, ?, ?)
+    `
+  ).run(userId, tokenHash, activePlanId, expiresAt.toISOString(), createdAt.toISOString());
 
   return { token, expiresAt };
 };
@@ -111,7 +122,7 @@ export const revokeSession = (token: string) => {
   db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(hashToken(token));
 };
 
-export const getUserFromSessionToken = (token: string): AuthUser | null => {
+export const getSessionFromToken = (token: string): AuthSession | null => {
   deleteExpiredSessions();
 
   const db = getDb();
@@ -119,7 +130,7 @@ export const getUserFromSessionToken = (token: string): AuthUser | null => {
   const row = db
     .prepare(
       `
-      SELECT sessions.user_id, users.username, sessions.expires_at
+      SELECT sessions.id AS session_id, sessions.user_id, users.username, sessions.active_plan_id, sessions.expires_at
       FROM sessions
       INNER JOIN users ON users.id = sessions.user_id
       WHERE sessions.token_hash = ?
@@ -138,12 +149,21 @@ export const getUserFromSessionToken = (token: string): AuthUser | null => {
   }
 
   return {
-    id: row.user_id,
-    username: row.username
+    sessionId: row.session_id,
+    user: {
+      id: row.user_id,
+      username: row.username
+    },
+    activePlanId: row.active_plan_id
   };
 };
 
 export const getCurrentUser = async (): Promise<AuthUser | null> => {
+  const session = await getCurrentSession();
+  return session?.user ?? null;
+};
+
+export const getCurrentSession = async (): Promise<AuthSession | null> => {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
@@ -151,7 +171,7 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
     return null;
   }
 
-  return getUserFromSessionToken(token);
+  return getSessionFromToken(token);
 };
 
 export const getCurrentSessionToken = async () => {

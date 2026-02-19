@@ -341,6 +341,11 @@ type BudgetAppProps = {
   username: string;
 };
 
+type ActivePlanMeta = {
+  id: number;
+  name: string;
+};
+
 type ModalOverlayProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -378,6 +383,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   const [hasPendingEdits, setHasPendingEdits] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [activePlan, setActivePlan] = useState<ActivePlanMeta | null>(null);
   const [isIncomeHelpOpen, setIsIncomeHelpOpen] = useState(false);
   const [isExpenseChartOpen, setIsExpenseChartOpen] = useState(false);
   const [isInvestmentHelpOpen, setIsInvestmentHelpOpen] = useState(false);
@@ -411,7 +417,10 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           throw new Error("Unable to load budget state.");
         }
 
-        const payload = (await response.json()) as { state?: BudgetState };
+        const payload = (await response.json()) as {
+          state?: BudgetState;
+          activePlan?: ActivePlanMeta;
+        };
         if (!active) {
           return;
         }
@@ -420,6 +429,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           type: "replace",
           state: sanitizeBudgetState(payload.state)
         });
+        setActivePlan(payload.activePlan ?? null);
         setHasPendingEdits(false);
         setInitialized(true);
       } catch (error) {
@@ -463,6 +473,11 @@ export default function BudgetApp({ username }: BudgetAppProps) {
 
         if (!response.ok) {
           throw new Error("Unable to save budget state.");
+        }
+
+        const payload = (await response.json()) as { activePlan?: ActivePlanMeta };
+        if (payload.activePlan) {
+          setActivePlan(payload.activePlan);
         }
 
         setHasPendingEdits(false);
@@ -700,12 +715,21 @@ export default function BudgetApp({ username }: BudgetAppProps) {
       <header className="card flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="caps-label text-xs font-semibold uppercase text-forest-600">Budget Tool</p>
-          <h1 className="text-3xl font-semibold tracking-[-0.02em]">Monthly Plan</h1>
+          <h1 className="text-3xl font-semibold tracking-[-0.02em]">
+            {activePlan?.name ?? "Monthly Plan"}
+          </h1>
           <p className="text-sm text-forest-700/80">Signed in as {username}</p>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <p className="tabular-nums text-sm text-forest-700/90">{statusLabel}</p>
+          <button
+            type="button"
+            onClick={() => router.push("/plans")}
+            className="btn-secondary px-3 py-2 text-sm font-medium"
+          >
+            Switch Plan
+          </button>
           <button
             type="button"
             disabled={isLoggingOut}
