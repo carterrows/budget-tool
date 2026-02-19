@@ -45,6 +45,7 @@ type Action =
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 type ViewMode = "list" | "edit";
+type ExpenseSortOrder = "asc" | "desc";
 
 const cad = new Intl.NumberFormat("en-CA", {
   style: "currency",
@@ -318,6 +319,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   const [isIncomeHelpOpen, setIsIncomeHelpOpen] = useState(false);
   const [incomeViewMode, setIncomeViewMode] = useState<ViewMode>("list");
   const [expenseViewMode, setExpenseViewMode] = useState<ViewMode>("list");
+  const [expenseSortOrder, setExpenseSortOrder] = useState<ExpenseSortOrder>("desc");
   const [investmentViewMode, setInvestmentViewMode] = useState<ViewMode>("list");
 
   const safeDispatch = (action: Action) => {
@@ -455,6 +457,20 @@ export default function BudgetApp({ username }: BudgetAppProps) {
         bonusValue: state.bonusValue
       }),
     [state.yearlySalary, state.bonusType, state.bonusValue]
+  );
+  const sortedExpenses = useMemo(
+    () =>
+      state.expenses
+        .map((expense, index) => ({ expense, index }))
+        .sort((left, right) => {
+          const amountDiff = left.expense.amount - right.expense.amount;
+          if (amountDiff === 0) {
+            return left.index - right.index;
+          }
+
+          return expenseSortOrder === "asc" ? amountDiff : -amountDiff;
+        }),
+    [state.expenses, expenseSortOrder]
   );
 
   const logout = async () => {
@@ -666,6 +682,18 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Expenses</h2>
               <div className="flex flex-wrap items-center gap-2">
+                <select
+                  id="expense-sort-order"
+                  aria-label="Expense sort order"
+                  value={expenseSortOrder}
+                  onChange={(event) =>
+                    setExpenseSortOrder(event.target.value as ExpenseSortOrder)
+                  }
+                  className="input h-10 w-[96px] min-w-0 py-0 pr-8"
+                >
+                  <option value="desc">desc</option>
+                  <option value="asc">asc</option>
+                </select>
                 {expenseViewMode === "edit" ? (
                   <button
                     type="button"
@@ -712,7 +740,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
 
             {expenseViewMode === "edit" ? (
               <div className="space-y-4">
-                {state.expenses.map((expense, index) => (
+                {sortedExpenses.map(({ expense, index }) => (
                   <article
                     key={`expense-${index}`}
                     className="rounded-xl border border-forest-100 bg-paper/70 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]"
@@ -806,7 +834,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                 </p>
                 <div className="overflow-hidden rounded-xl border border-forest-100 bg-paper/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]">
                   <ul className="divide-y divide-forest-100/90">
-                    {state.expenses.map((expense, index) => (
+                    {sortedExpenses.map(({ expense, index }, expenseIndex) => (
                       <li
                         key={`expense-list-${index}`}
                         className="flex items-center justify-between gap-4 px-4 py-3"
@@ -815,7 +843,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                           <p className="truncate text-sm font-medium text-forest-900">
                             {expense.name.trim().length > 0
                               ? expense.name
-                              : `Expense ${index + 1}`}
+                              : `Expense ${expenseIndex + 1}`}
                           </p>
                           <p className="text-xs text-forest-700/75">
                             {expense.frequency === "bi-weekly" ? "Bi-weekly" : "Monthly"}
