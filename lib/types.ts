@@ -8,13 +8,19 @@ export type ExpenseItem = {
 };
 
 export type BudgetFrequencies = {
-  investments: BudgetFrequency;
+  investments: {
+    tfsa: BudgetFrequency;
+    fhsa: BudgetFrequency;
+    rrsp: BudgetFrequency;
+    emergencyFund: BudgetFrequency;
+  };
 };
 
 export type InvestmentState = {
   tfsa: number;
   fhsa: number;
   rrsp: number;
+  emergencyFund: number;
 };
 
 export type BudgetState = {

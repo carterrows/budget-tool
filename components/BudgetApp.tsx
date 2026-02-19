@@ -1,6 +1,13 @@
 "use client";
 
-import { type FocusEvent, useEffect, useMemo, useReducer, useState } from "react";
+import {
+  type FocusEvent,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useReducer,
+  useState
+} from "react";
 import { useRouter } from "next/navigation";
 import {
   DEFAULT_STATE,
@@ -20,16 +27,16 @@ type Action =
   | { type: "set-yearly-salary"; amount: number }
   | { type: "set-bonus-type"; bonusType: BonusType }
   | { type: "set-bonus-value"; amount: number }
-  | {
-      type: "set-frequency";
-      section: "investments";
-      frequency: BudgetFrequency;
-    }
   | { type: "add-expense" }
   | { type: "remove-expense"; index: number }
   | { type: "set-expense-name"; index: number; name: string }
   | { type: "set-expense-amount"; index: number; amount: number }
   | { type: "set-expense-frequency"; index: number; frequency: BudgetFrequency }
+  | {
+      type: "set-investment-frequency";
+      field: keyof InvestmentState;
+      frequency: BudgetFrequency;
+    }
   | {
       type: "set-investment";
       field: keyof InvestmentState;
@@ -37,7 +44,7 @@ type Action =
     };
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
-type ExpenseViewMode = "list" | "edit";
+type ViewMode = "list" | "edit";
 
 const cad = new Intl.NumberFormat("en-CA", {
   style: "currency",
@@ -94,12 +101,15 @@ const reducer = (state: BudgetState, action: Action): BudgetState => {
               ? normalizeMoney(action.amount, MAX_BONUS_PERCENT)
               : 0
       };
-    case "set-frequency":
+    case "set-investment-frequency":
       return {
         ...state,
         frequencies: {
           ...state.frequencies,
-          [action.section]: action.frequency
+          investments: {
+            ...state.frequencies.investments,
+            [action.field]: action.frequency
+          }
         }
       };
     case "add-expense":
@@ -158,14 +168,25 @@ type SliderMoneyFieldProps = {
   value: number;
   max: number;
   onChange: (value: number) => void;
+  labelAccessory?: ReactNode;
 };
 
-function SliderMoneyField({ id, label, value, max, onChange }: SliderMoneyFieldProps) {
+function SliderMoneyField({
+  id,
+  label,
+  value,
+  max,
+  onChange,
+  labelAccessory
+}: SliderMoneyFieldProps) {
   return (
     <div className="space-y-2">
-      <label htmlFor={id} className="text-sm font-medium text-forest-800">
-        {label}
-      </label>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <label htmlFor={id} className="text-sm font-medium text-forest-800">
+          {label}
+        </label>
+        {labelAccessory}
+      </div>
       <div className="grid gap-3 md:grid-cols-[1fr_140px]">
         <input
           id={id}
@@ -246,21 +267,37 @@ type FrequencySelectProps = {
   id: string;
   value: BudgetFrequency;
   onChange: (value: BudgetFrequency) => void;
+  showLabel?: boolean;
+  compact?: boolean;
 };
 
-function FrequencySelect({ id, value, onChange }: FrequencySelectProps) {
+function FrequencySelect({
+  id,
+  value,
+  onChange,
+  showLabel = true,
+  compact = false
+}: FrequencySelectProps) {
+  const control = (
+    <select
+      id={id}
+      value={value}
+      onChange={(event) => onChange(event.target.value as BudgetFrequency)}
+      className={`input h-10 py-0 pr-8 ${compact ? "w-auto min-w-[122px] shrink-0" : "min-w-[140px]"}`}
+    >
+      <option value="monthly">Monthly</option>
+      <option value="bi-weekly">Bi-weekly</option>
+    </select>
+  );
+
+  if (!showLabel) {
+    return control;
+  }
+
   return (
     <label htmlFor={id} className="flex items-center gap-2 text-sm text-forest-800">
       <span>Frequency</span>
-      <select
-        id={id}
-        value={value}
-        onChange={(event) => onChange(event.target.value as BudgetFrequency)}
-        className="input h-10 min-w-[140px] py-0 pr-8"
-      >
-        <option value="monthly">Monthly</option>
-        <option value="bi-weekly">Bi-weekly</option>
-      </select>
+      {control}
     </label>
   );
 }
@@ -279,7 +316,9 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   const [initialized, setInitialized] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isIncomeHelpOpen, setIsIncomeHelpOpen] = useState(false);
-  const [expenseViewMode, setExpenseViewMode] = useState<ExpenseViewMode>("list");
+  const [incomeViewMode, setIncomeViewMode] = useState<ViewMode>("list");
+  const [expenseViewMode, setExpenseViewMode] = useState<ViewMode>("list");
+  const [investmentViewMode, setInvestmentViewMode] = useState<ViewMode>("list");
 
   const safeDispatch = (action: Action) => {
     setHasPendingEdits(true);
@@ -479,67 +518,140 @@ export default function BudgetApp({ username }: BudgetAppProps) {
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-6">
           <section className="card space-y-4 p-6">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Income</h2>
-              <button
-                type="button"
-                onClick={() => setIsIncomeHelpOpen(true)}
-                aria-label="How net income is calculated"
-                title="How net income is calculated"
-                className="btn-secondary h-9 w-9 px-0 py-0 leading-none"
-              >
-                <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
-                  question_mark
-                </span>
-              </button>
-            </div>
-            <SliderMoneyField
-              id="yearly-salary"
-              label="Yearly Salary (CAD)"
-              value={state.yearlySalary}
-              max={MAX_YEARLY_SALARY}
-              onChange={(amount) => safeDispatch({ type: "set-yearly-salary", amount })}
-            />
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <label htmlFor="bonus-type" className="text-sm font-medium text-forest-800">
-                  Year-end Bonus
-                </label>
-                <select
-                  id="bonus-type"
-                  value={state.bonusType}
-                  onChange={(event) =>
-                    safeDispatch({
-                      type: "set-bonus-type",
-                      bonusType: event.target.value as BonusType
-                    })
-                  }
-                  className="input h-10 min-w-[220px] py-0 pr-8 md:w-[260px]"
+              <div className="flex flex-wrap items-center gap-2">
+                <div
+                  className="inline-flex rounded-lg border border-forest-200 bg-paper/70 p-1"
+                  role="tablist"
+                  aria-label="Income view mode"
                 >
-                  <option value="none">No bonus</option>
-                  <option value="amount">Dollar amount</option>
-                  <option value="percentage">Percentage of salary</option>
-                </select>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={incomeViewMode === "list"}
+                    onClick={() => setIncomeViewMode("list")}
+                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                      incomeViewMode === "list"
+                        ? "bg-forest-700 text-white"
+                        : "text-forest-700 hover:bg-forest-100/70"
+                    }`}
+                  >
+                    List view
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={incomeViewMode === "edit"}
+                    onClick={() => setIncomeViewMode("edit")}
+                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                      incomeViewMode === "edit"
+                        ? "bg-forest-700 text-white"
+                        : "text-forest-700 hover:bg-forest-100/70"
+                    }`}
+                  >
+                    Edit view
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsIncomeHelpOpen(true)}
+                  aria-label="How net income is calculated"
+                  title="How net income is calculated"
+                  className="btn-secondary h-9 w-9 px-0 py-0 leading-none"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                    question_mark
+                  </span>
+                </button>
               </div>
             </div>
-            {state.bonusType === "amount" ? (
-              <SliderMoneyField
-                id="bonus-amount"
-                label="Bonus Amount (CAD)"
-                value={state.bonusValue}
-                max={MAX_BONUS_AMOUNT}
-                onChange={(amount) => safeDispatch({ type: "set-bonus-value", amount })}
-              />
-            ) : null}
-            {state.bonusType === "percentage" ? (
-              <SliderPercentField
-                id="bonus-percent"
-                label="Bonus Percentage"
-                value={state.bonusValue}
-                max={MAX_BONUS_PERCENT}
-                onChange={(amount) => safeDispatch({ type: "set-bonus-value", amount })}
-              />
-            ) : null}
+            {incomeViewMode === "edit" ? (
+              <>
+                <SliderMoneyField
+                  id="yearly-salary"
+                  label="Yearly Salary (CAD)"
+                  value={state.yearlySalary}
+                  max={MAX_YEARLY_SALARY}
+                  onChange={(amount) => safeDispatch({ type: "set-yearly-salary", amount })}
+                />
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <label htmlFor="bonus-type" className="text-sm font-medium text-forest-800">
+                      Year-end Bonus
+                    </label>
+                    <select
+                      id="bonus-type"
+                      value={state.bonusType}
+                      onChange={(event) =>
+                        safeDispatch({
+                          type: "set-bonus-type",
+                          bonusType: event.target.value as BonusType
+                        })
+                      }
+                      className="input h-10 min-w-[220px] py-0 pr-8 md:w-[260px]"
+                    >
+                      <option value="none">No bonus</option>
+                      <option value="amount">Dollar amount</option>
+                      <option value="percentage">Percentage of salary</option>
+                    </select>
+                  </div>
+                </div>
+                {state.bonusType === "amount" ? (
+                  <SliderMoneyField
+                    id="bonus-amount"
+                    label="Bonus Amount (CAD)"
+                    value={state.bonusValue}
+                    max={MAX_BONUS_AMOUNT}
+                    onChange={(amount) => safeDispatch({ type: "set-bonus-value", amount })}
+                  />
+                ) : null}
+                {state.bonusType === "percentage" ? (
+                  <SliderPercentField
+                    id="bonus-percent"
+                    label="Bonus Percentage"
+                    value={state.bonusValue}
+                    max={MAX_BONUS_PERCENT}
+                    onChange={(amount) => safeDispatch({ type: "set-bonus-value", amount })}
+                  />
+                ) : null}
+              </>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-forest-700/80">
+                  Read-only summary. Switch to Edit view to make changes.
+                </p>
+                <div className="overflow-hidden rounded-xl border border-forest-100 bg-paper/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]">
+                  <ul className="divide-y divide-forest-100/90">
+                    <li className="flex items-center justify-between gap-4 px-4 py-3">
+                      <p className="text-sm font-medium text-forest-900">Yearly salary</p>
+                      <p className="tabular-nums text-sm font-semibold text-forest-900">
+                        {cad.format(state.yearlySalary)}
+                      </p>
+                    </li>
+                    <li className="flex items-center justify-between gap-4 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-forest-900">Year-end bonus</p>
+                        <p className="text-xs text-forest-700/75">
+                          {state.bonusType === "amount"
+                            ? "Dollar amount"
+                            : state.bonusType === "percentage"
+                              ? "Percentage of salary"
+                              : "No bonus configured"}
+                        </p>
+                      </div>
+                      <p className="tabular-nums text-sm font-semibold text-forest-900">
+                        {state.bonusType === "none"
+                          ? "No bonus"
+                          : state.bonusType === "amount"
+                            ? cad.format(state.bonusValue)
+                            : `${state.bonusValue}% of salary`}
+                      </p>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            )}
             <div className="rounded-xl border border-forest-200/80 bg-paper/55 p-4">
               <p className="caps-label text-xs font-semibold uppercase text-forest-600">
                 Yearly Net Income (After Tax + Deductions)
@@ -554,6 +666,15 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Expenses</h2>
               <div className="flex flex-wrap items-center gap-2">
+                {expenseViewMode === "edit" ? (
+                  <button
+                    type="button"
+                    onClick={() => safeDispatch({ type: "add-expense" })}
+                    className="btn-secondary px-3 py-2 text-sm font-medium"
+                  >
+                    + Add expense
+                  </button>
+                ) : null}
                 <div
                   className="inline-flex rounded-lg border border-forest-200 bg-paper/70 p-1"
                   role="tablist"
@@ -586,15 +707,6 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                     Edit view
                   </button>
                 </div>
-                {expenseViewMode === "edit" ? (
-                  <button
-                    type="button"
-                    onClick={() => safeDispatch({ type: "add-expense" })}
-                    className="btn-secondary px-3 py-2 text-sm font-medium"
-                  >
-                    + Add expense
-                  </button>
-                ) : null}
               </div>
             </div>
 
@@ -605,7 +717,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                     key={`expense-${index}`}
                     className="rounded-xl border border-forest-100 bg-paper/70 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]"
                   >
-                    <div className="mb-2 flex items-start gap-3">
+                    <div className="mb-2 flex items-center gap-3">
                       <input
                         type="text"
                         value={expense.name}
@@ -619,6 +731,19 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                         placeholder="Category"
                         className="input min-w-0 flex-1"
                       />
+                      <FrequencySelect
+                        id={`expense-frequency-${index}`}
+                        value={expense.frequency}
+                        showLabel={false}
+                        compact
+                        onChange={(frequency) =>
+                          safeDispatch({
+                            type: "set-expense-frequency",
+                            index,
+                            frequency
+                          })
+                        }
+                      />
                       <button
                         type="button"
                         onClick={() => safeDispatch({ type: "remove-expense", index })}
@@ -631,19 +756,6 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                           delete
                         </span>
                       </button>
-                    </div>
-                    <div className="mb-3 flex justify-end">
-                      <FrequencySelect
-                        id={`expense-frequency-${index}`}
-                        value={expense.frequency}
-                        onChange={(frequency) =>
-                          safeDispatch({
-                            type: "set-expense-frequency",
-                            index,
-                            frequency
-                          })
-                        }
-                      />
                     </div>
 
                     <div className="grid gap-3 md:grid-cols-[1fr_140px]">
@@ -723,47 +835,199 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           <section className="card space-y-4 p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Investments</h2>
-              <FrequencySelect
-                id="investments-frequency"
-                value={state.frequencies.investments}
-                onChange={(frequency) =>
-                  safeDispatch({
-                    type: "set-frequency",
-                    section: "investments",
-                    frequency
-                  })
-                }
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <div
+                  className="inline-flex rounded-lg border border-forest-200 bg-paper/70 p-1"
+                  role="tablist"
+                  aria-label="Investment view mode"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={investmentViewMode === "list"}
+                    onClick={() => setInvestmentViewMode("list")}
+                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                      investmentViewMode === "list"
+                        ? "bg-forest-700 text-white"
+                        : "text-forest-700 hover:bg-forest-100/70"
+                    }`}
+                  >
+                    List view
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={investmentViewMode === "edit"}
+                    onClick={() => setInvestmentViewMode("edit")}
+                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                      investmentViewMode === "edit"
+                        ? "bg-forest-700 text-white"
+                        : "text-forest-700 hover:bg-forest-100/70"
+                    }`}
+                  >
+                    Edit view
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="space-y-4">
-              <SliderMoneyField
-                id="tfsa"
-                label="TFSA"
-                value={state.investments.tfsa}
-                max={MAX_INVESTMENT}
-                onChange={(amount) =>
-                  safeDispatch({ type: "set-investment", field: "tfsa", amount })
-                }
-              />
-              <SliderMoneyField
-                id="fhsa"
-                label="FHSA"
-                value={state.investments.fhsa}
-                max={MAX_INVESTMENT}
-                onChange={(amount) =>
-                  safeDispatch({ type: "set-investment", field: "fhsa", amount })
-                }
-              />
-              <SliderMoneyField
-                id="rrsp"
-                label="RRSP"
-                value={state.investments.rrsp}
-                max={MAX_INVESTMENT}
-                onChange={(amount) =>
-                  safeDispatch({ type: "set-investment", field: "rrsp", amount })
-                }
-              />
-            </div>
+            {investmentViewMode === "edit" ? (
+              <div className="space-y-4">
+                <SliderMoneyField
+                  id="tfsa"
+                  label="TFSA"
+                  value={state.investments.tfsa}
+                  max={MAX_INVESTMENT}
+                  onChange={(amount) =>
+                    safeDispatch({ type: "set-investment", field: "tfsa", amount })
+                  }
+                  labelAccessory={
+                    <FrequencySelect
+                      id="investment-frequency-tfsa"
+                      value={state.frequencies.investments.tfsa}
+                      showLabel={false}
+                      onChange={(frequency) =>
+                        safeDispatch({
+                          type: "set-investment-frequency",
+                          field: "tfsa",
+                          frequency
+                        })
+                      }
+                    />
+                  }
+                />
+                <SliderMoneyField
+                  id="fhsa"
+                  label="FHSA"
+                  value={state.investments.fhsa}
+                  max={MAX_INVESTMENT}
+                  onChange={(amount) =>
+                    safeDispatch({ type: "set-investment", field: "fhsa", amount })
+                  }
+                  labelAccessory={
+                    <FrequencySelect
+                      id="investment-frequency-fhsa"
+                      value={state.frequencies.investments.fhsa}
+                      showLabel={false}
+                      onChange={(frequency) =>
+                        safeDispatch({
+                          type: "set-investment-frequency",
+                          field: "fhsa",
+                          frequency
+                        })
+                      }
+                    />
+                  }
+                />
+                <SliderMoneyField
+                  id="rrsp"
+                  label="RRSP"
+                  value={state.investments.rrsp}
+                  max={MAX_INVESTMENT}
+                  onChange={(amount) =>
+                    safeDispatch({ type: "set-investment", field: "rrsp", amount })
+                  }
+                  labelAccessory={
+                    <FrequencySelect
+                      id="investment-frequency-rrsp"
+                      value={state.frequencies.investments.rrsp}
+                      showLabel={false}
+                      onChange={(frequency) =>
+                        safeDispatch({
+                          type: "set-investment-frequency",
+                          field: "rrsp",
+                          frequency
+                        })
+                      }
+                    />
+                  }
+                />
+                <SliderMoneyField
+                  id="emergency-fund"
+                  label="Emergency Fund"
+                  value={state.investments.emergencyFund}
+                  max={MAX_INVESTMENT}
+                  onChange={(amount) =>
+                    safeDispatch({ type: "set-investment", field: "emergencyFund", amount })
+                  }
+                  labelAccessory={
+                    <FrequencySelect
+                      id="investment-frequency-emergency-fund"
+                      value={state.frequencies.investments.emergencyFund}
+                      showLabel={false}
+                      onChange={(frequency) =>
+                        safeDispatch({
+                          type: "set-investment-frequency",
+                          field: "emergencyFund",
+                          frequency
+                        })
+                      }
+                    />
+                  }
+                />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-forest-700/80">
+                  Read-only summary. Switch to Edit view to make changes.
+                </p>
+                <div className="overflow-hidden rounded-xl border border-forest-100 bg-paper/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]">
+                  <ul className="divide-y divide-forest-100/90">
+                    <li className="flex items-center justify-between gap-4 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-forest-900">TFSA</p>
+                        <p className="text-xs text-forest-700/75">
+                          {state.frequencies.investments.tfsa === "bi-weekly"
+                            ? "Bi-weekly"
+                            : "Monthly"}
+                        </p>
+                      </div>
+                      <p className="tabular-nums text-sm font-semibold text-forest-900">
+                        {cad.format(state.investments.tfsa)}
+                      </p>
+                    </li>
+                    <li className="flex items-center justify-between gap-4 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-forest-900">FHSA</p>
+                        <p className="text-xs text-forest-700/75">
+                          {state.frequencies.investments.fhsa === "bi-weekly"
+                            ? "Bi-weekly"
+                            : "Monthly"}
+                        </p>
+                      </div>
+                      <p className="tabular-nums text-sm font-semibold text-forest-900">
+                        {cad.format(state.investments.fhsa)}
+                      </p>
+                    </li>
+                    <li className="flex items-center justify-between gap-4 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-forest-900">RRSP</p>
+                        <p className="text-xs text-forest-700/75">
+                          {state.frequencies.investments.rrsp === "bi-weekly"
+                            ? "Bi-weekly"
+                            : "Monthly"}
+                        </p>
+                      </div>
+                      <p className="tabular-nums text-sm font-semibold text-forest-900">
+                        {cad.format(state.investments.rrsp)}
+                      </p>
+                    </li>
+                    <li className="flex items-center justify-between gap-4 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-forest-900">Emergency fund</p>
+                        <p className="text-xs text-forest-700/75">
+                          {state.frequencies.investments.emergencyFund === "bi-weekly"
+                            ? "Bi-weekly"
+                            : "Monthly"}
+                        </p>
+                      </div>
+                      <p className="tabular-nums text-sm font-semibold text-forest-900">
+                        {cad.format(state.investments.emergencyFund)}
+                      </p>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            )}
           </section>
         </div>
 

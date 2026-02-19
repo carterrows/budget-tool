@@ -15,10 +15,16 @@ export const DEFAULT_STATE: BudgetState = {
   investments: {
     tfsa: 0,
     fhsa: 0,
-    rrsp: 0
+    rrsp: 0,
+    emergencyFund: 0
   },
   frequencies: {
-    investments: "monthly"
+    investments: {
+      tfsa: "monthly",
+      fhsa: "monthly",
+      rrsp: "monthly",
+      emergencyFund: "monthly"
+    }
   }
 };
 
@@ -98,6 +104,11 @@ export const sanitizeBudgetState = (input: unknown): BudgetState => {
       ? (candidate.frequencies as Record<string, unknown>)
       : {};
   const defaultExpenseFrequency = normalizeFrequency(frequenciesRaw.expenses);
+  const legacyInvestmentFrequency = normalizeFrequency(frequenciesRaw.investments);
+  const investmentFrequenciesRaw =
+    frequenciesRaw.investments && typeof frequenciesRaw.investments === "object"
+      ? (frequenciesRaw.investments as Record<string, unknown>)
+      : {};
 
   const expenses = expensesRaw
     .map((expense) => normalizeExpense(expense, defaultExpenseFrequency))
@@ -126,10 +137,21 @@ export const sanitizeBudgetState = (input: unknown): BudgetState => {
       rrsp: normalizeAmount(
         (investmentsRaw as Record<string, unknown>).rrsp,
         MAX_INVESTMENT
+      ),
+      emergencyFund: normalizeAmount(
+        (investmentsRaw as Record<string, unknown>).emergencyFund,
+        MAX_INVESTMENT
       )
     },
     frequencies: {
-      investments: normalizeFrequency(frequenciesRaw.investments)
+      investments: {
+        tfsa: normalizeFrequency(investmentFrequenciesRaw.tfsa ?? legacyInvestmentFrequency),
+        fhsa: normalizeFrequency(investmentFrequenciesRaw.fhsa ?? legacyInvestmentFrequency),
+        rrsp: normalizeFrequency(investmentFrequenciesRaw.rrsp ?? legacyInvestmentFrequency),
+        emergencyFund: normalizeFrequency(
+          investmentFrequenciesRaw.emergencyFund ?? legacyInvestmentFrequency
+        )
+      }
     }
   };
 };
@@ -148,9 +170,13 @@ export const calculateTotals = (state: BudgetState) => {
     0
   );
   const totalInvestments =
-    toMonthlyAmount(state.investments.tfsa, state.frequencies.investments) +
-    toMonthlyAmount(state.investments.fhsa, state.frequencies.investments) +
-    toMonthlyAmount(state.investments.rrsp, state.frequencies.investments);
+    toMonthlyAmount(state.investments.tfsa, state.frequencies.investments.tfsa) +
+    toMonthlyAmount(state.investments.fhsa, state.frequencies.investments.fhsa) +
+    toMonthlyAmount(state.investments.rrsp, state.frequencies.investments.rrsp) +
+    toMonthlyAmount(
+      state.investments.emergencyFund,
+      state.frequencies.investments.emergencyFund
+    );
 
   return {
     monthlyIncome: roundMoney(monthlyIncome),
