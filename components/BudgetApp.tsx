@@ -53,6 +53,23 @@ const cad = new Intl.NumberFormat("en-CA", {
   maximumFractionDigits: 2
 });
 
+const EXPENSE_CHART_COLORS = [
+  "#235f46",
+  "#2f7a58",
+  "#42916d",
+  "#5aa683",
+  "#76b99a",
+  "#91c9ae",
+  "#abc9a0",
+  "#c7cf9c",
+  "#dac58d",
+  "#dca97f"
+];
+
+const TFSA_2026_LIMIT = 7000;
+const FHSA_2026_LIMIT = 8000;
+const RRSP_2026_CAP = 33810;
+
 const toNumber = (value: string) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -63,6 +80,12 @@ const clamp = (value: number, min: number, max: number) =>
 
 const normalizeMoney = (value: number, max: number) =>
   Math.round(clamp(value, 0, max) * 100) / 100;
+
+const toMonthlyEquivalent = (amount: number, frequency: BudgetFrequency) =>
+  frequency === "bi-weekly" ? (amount * 26) / 12 : amount;
+
+const toYearlyEquivalent = (amount: number, frequency: BudgetFrequency) =>
+  frequency === "bi-weekly" ? amount * 26 : amount * 12;
 
 const selectInputValueOnFocus = (event: FocusEvent<HTMLInputElement>) => {
   const currentValue = toNumber(event.currentTarget.value);
@@ -317,6 +340,9 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   const [initialized, setInitialized] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isIncomeHelpOpen, setIsIncomeHelpOpen] = useState(false);
+  const [isExpenseChartOpen, setIsExpenseChartOpen] = useState(false);
+  const [isInvestmentHelpOpen, setIsInvestmentHelpOpen] = useState(false);
+  const [rrspIncome2025, setRrspIncome2025] = useState(0);
   const [incomeViewMode, setIncomeViewMode] = useState<ViewMode>("list");
   const [expenseViewMode, setExpenseViewMode] = useState<ViewMode>("list");
   const [expenseSortOrder, setExpenseSortOrder] = useState<ExpenseSortOrder>("desc");
@@ -418,13 +444,15 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   }, [state, initialized, hasPendingEdits]);
 
   useEffect(() => {
-    if (!isIncomeHelpOpen) {
+    if (!isIncomeHelpOpen && !isExpenseChartOpen && !isInvestmentHelpOpen) {
       return;
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setIsIncomeHelpOpen(false);
+        setIsExpenseChartOpen(false);
+        setIsInvestmentHelpOpen(false);
       }
     };
 
@@ -433,10 +461,10 @@ export default function BudgetApp({ username }: BudgetAppProps) {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [isIncomeHelpOpen]);
+  }, [isIncomeHelpOpen, isExpenseChartOpen, isInvestmentHelpOpen]);
 
   useEffect(() => {
-    if (!isIncomeHelpOpen) {
+    if (!isIncomeHelpOpen && !isExpenseChartOpen && !isInvestmentHelpOpen) {
       return;
     }
 
@@ -446,7 +474,13 @@ export default function BudgetApp({ username }: BudgetAppProps) {
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [isIncomeHelpOpen]);
+  }, [isIncomeHelpOpen, isExpenseChartOpen, isInvestmentHelpOpen]);
+
+  useEffect(() => {
+    if (expenseViewMode === "edit") {
+      setIsExpenseChartOpen(false);
+    }
+  }, [expenseViewMode]);
 
   const totals = useMemo(() => calculateTotals(state), [state]);
   const incomeBreakdown = useMemo(
@@ -476,6 +510,113 @@ export default function BudgetApp({ username }: BudgetAppProps) {
     () => state.expenses.map((expense, index) => ({ expense, index })),
     [state.expenses]
   );
+  const expenseChart = useMemo(() => {
+    const slices = state.expenses
+      .map((expense, index) => ({
+        index,
+        name: expense.name.trim().length > 0 ? expense.name : `Expense ${index + 1}`,
+        frequencyLabel: expense.frequency === "bi-weekly" ? "Bi-weekly" : "Monthly",
+        monthlyAmount: toMonthlyEquivalent(expense.amount, expense.frequency)
+      }))
+      .sort((left, right) => {
+        const amountDiff = right.monthlyAmount - left.monthlyAmount;
+        if (amountDiff === 0) {
+          return left.index - right.index;
+        }
+        return amountDiff;
+      })
+      .map((slice, chartIndex) => ({
+        ...slice,
+        color: EXPENSE_CHART_COLORS[chartIndex % EXPENSE_CHART_COLORS.length]
+      }));
+
+    const totalMonthlyExpenses = slices.reduce((sum, slice) => sum + slice.monthlyAmount, 0);
+    let cursor = 0;
+
+    const slicesWithPercent = slices.map((slice) => {
+      const percentage = totalMonthlyExpenses > 0 ? (slice.monthlyAmount / totalMonthlyExpenses) * 100 : 0;
+      const start = cursor;
+      cursor += percentage;
+      return {
+        ...slice,
+        percentage,
+        start,
+        end: cursor
+      };
+    });
+
+    const chartStops = slicesWithPercent
+      .filter((slice) => slice.percentage > 0)
+      .map((slice) => `${slice.color} ${slice.start}% ${Math.min(slice.end, 100)}%`);
+
+    return {
+      totalMonthlyExpenses,
+      slices: slicesWithPercent,
+      backgroundImage:
+        chartStops.length > 0
+          ? `conic-gradient(${chartStops.join(", ")})`
+          : "conic-gradient(#d8e6de 0 100%)"
+    };
+  }, [state.expenses]);
+  const investmentLimitGuide = useMemo(() => {
+    const tfsaYearly = toYearlyEquivalent(
+      state.investments.tfsa,
+      state.frequencies.investments.tfsa
+    );
+    const fhsaYearly = toYearlyEquivalent(
+      state.investments.fhsa,
+      state.frequencies.investments.fhsa
+    );
+    const rrspYearly = toYearlyEquivalent(
+      state.investments.rrsp,
+      state.frequencies.investments.rrsp
+    );
+    const rrspBasedOnIncome = rrspIncome2025 * 0.18;
+    const rrspLimit = Math.min(RRSP_2026_CAP, rrspBasedOnIncome);
+
+    return {
+      rrspBasedOnIncome,
+      rrspLimit,
+      entries: [
+        {
+          id: "tfsa",
+          label: "TFSA",
+          yearlyContribution: tfsaYearly,
+          yearlyLimit: TFSA_2026_LIMIT,
+          frequencyLabel:
+            state.frequencies.investments.tfsa === "bi-weekly" ? "Bi-weekly" : "Monthly"
+        },
+        {
+          id: "fhsa",
+          label: "FHSA",
+          yearlyContribution: fhsaYearly,
+          yearlyLimit: FHSA_2026_LIMIT,
+          frequencyLabel:
+            state.frequencies.investments.fhsa === "bi-weekly" ? "Bi-weekly" : "Monthly"
+        },
+        {
+          id: "rrsp",
+          label: "RRSP",
+          yearlyContribution: rrspYearly,
+          yearlyLimit: rrspLimit,
+          frequencyLabel:
+            state.frequencies.investments.rrsp === "bi-weekly" ? "Bi-weekly" : "Monthly"
+        }
+      ].map((entry) => ({
+        ...entry,
+        usagePercent:
+          entry.yearlyLimit > 0 ? (entry.yearlyContribution / entry.yearlyLimit) * 100 : 0
+      }))
+    };
+  }, [
+    rrspIncome2025,
+    state.frequencies.investments.fhsa,
+    state.frequencies.investments.rrsp,
+    state.frequencies.investments.tfsa,
+    state.investments.fhsa,
+    state.investments.rrsp,
+    state.investments.tfsa
+  ]);
 
   const logout = async () => {
     setIsLoggingOut(true);
@@ -671,6 +812,19 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Expenses</h2>
               <div className="flex flex-wrap items-center gap-2">
+                {expenseViewMode === "list" ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsExpenseChartOpen(true)}
+                    aria-label="Show expense pie chart"
+                    title="Show expense pie chart"
+                    className="btn-secondary h-10 w-10 px-0 py-0 leading-none"
+                  >
+                    <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                      pie_chart
+                    </span>
+                  </button>
+                ) : null}
                 <select
                   id="expense-sort-order"
                   aria-label="Expense sort order"
@@ -838,6 +992,17 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Investments</h2>
               <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsInvestmentHelpOpen(true)}
+                  aria-label="How investment limits are calculated"
+                  title="How investment limits are calculated"
+                  className="btn-secondary h-9 w-9 px-0 py-0 leading-none"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                    question_mark
+                  </span>
+                </button>
                 <button
                   type="button"
                   onClick={() =>
@@ -1155,6 +1320,222 @@ export default function BudgetApp({ username }: BudgetAppProps) {
               <p className="tabular-nums mt-2 text-3xl font-semibold text-forest-700">
                 {cad.format(incomeBreakdown.monthlyNetIncome)}
               </p>
+            </div>
+          </article>
+        </div>
+      ) : null}
+
+      {isExpenseChartOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-forest-900/25 p-4 backdrop-blur-sm"
+          onClick={() => setIsExpenseChartOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="expense-chart-title"
+        >
+          <article
+            className="card w-full max-w-3xl p-6 md:p-8"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="caps-label text-xs font-semibold uppercase text-forest-600">
+                  Expenses Breakdown
+                </p>
+                <h3 id="expense-chart-title" className="mt-1 text-2xl font-semibold">
+                  Expense Pie Chart
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsExpenseChartOpen(false)}
+                className="btn-secondary h-9 px-3 py-0 text-sm"
+              >
+                Close
+              </button>
+            </div>
+
+            <p className="mt-3 text-sm text-forest-700/85">
+              Each slice shows that category&apos;s share of your total monthly expenses.
+            </p>
+
+            <div className="mt-6 grid gap-5 lg:grid-cols-[260px_1fr] lg:items-start">
+              <div className="mx-auto">
+                <div
+                  className="relative h-[220px] w-[220px] rounded-full border border-forest-200/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
+                  style={{ backgroundImage: expenseChart.backgroundImage }}
+                >
+                  <div className="absolute inset-[24%] flex flex-col items-center justify-center rounded-full border border-forest-200/80 bg-paper/90 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
+                    <span className="text-xs text-forest-700/80">Monthly total</span>
+                    <span className="tabular-nums mt-1 text-lg font-semibold text-forest-900">
+                      {cad.format(expenseChart.totalMonthlyExpenses)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-hidden rounded-xl border border-forest-200 bg-paper/55">
+                <ul className="divide-y divide-forest-100/90">
+                  {expenseChart.slices.map((slice) => (
+                    <li
+                      key={`expense-chart-${slice.index}`}
+                      className="flex items-center justify-between gap-4 px-4 py-3"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span
+                          className="h-3.5 w-3.5 shrink-0 rounded-full border border-forest-300/70"
+                          style={{ backgroundColor: slice.color }}
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-forest-900">
+                            {slice.name}
+                          </p>
+                          <p className="text-xs text-forest-700/75">{slice.frequencyLabel}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="tabular-nums text-sm font-semibold text-forest-900">
+                          {slice.percentage.toFixed(1)}%
+                        </p>
+                        <p className="tabular-nums text-xs text-forest-700/80">
+                          {cad.format(slice.monthlyAmount)}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </article>
+        </div>
+      ) : null}
+
+      {isInvestmentHelpOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-forest-900/25 p-4 backdrop-blur-sm"
+          onClick={() => setIsInvestmentHelpOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="investment-help-title"
+        >
+          <article
+            className="card w-full max-w-3xl p-6 md:p-8"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="caps-label text-xs font-semibold uppercase text-forest-600">
+                  Registered Accounts
+                </p>
+                <h3 id="investment-help-title" className="mt-1 text-2xl font-semibold">
+                  Yearly Contribution Limits (2026)
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsInvestmentHelpOpen(false)}
+                className="btn-secondary h-9 px-3 py-0 text-sm"
+              >
+                Close
+              </button>
+            </div>
+
+            <p className="mt-3 text-sm text-forest-700/85">
+              Yearly totals use your selected frequency for TFSA, FHSA, and RRSP. Limits used:
+              TFSA {cad.format(TFSA_2026_LIMIT)}, FHSA {cad.format(FHSA_2026_LIMIT)}, RRSP
+              {` min(${cad.format(RRSP_2026_CAP)}, 18% of 2025 income)`}.
+            </p>
+
+            <div className="mt-5 rounded-xl border border-forest-200 bg-paper/55 p-4">
+              <div className="flex flex-wrap items-end gap-3">
+                <label
+                  htmlFor="rrsp-income-2025"
+                  className="text-sm font-medium text-forest-900"
+                >
+                  2025 income for RRSP limit
+                </label>
+                <div className="relative min-w-[220px] flex-1 md:max-w-[280px]">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
+                    $
+                  </span>
+                  <input
+                    id="rrsp-income-2025"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={rrspIncome2025}
+                    onChange={(event) =>
+                      setRrspIncome2025(Math.max(0, toNumber(event.target.value)))
+                    }
+                    onFocus={selectInputValueOnFocus}
+                    className="input tabular-nums pl-7 pr-3 text-right"
+                  />
+                </div>
+              </div>
+              <p className="tabular-nums mt-2 text-sm text-forest-700/90">
+                18% of 2025 income: {cad.format(investmentLimitGuide.rrspBasedOnIncome)}. RRSP
+                limit used: {cad.format(investmentLimitGuide.rrspLimit)}.
+              </p>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {investmentLimitGuide.entries.map((entry) => {
+                const cappedUsagePercent = Math.min(entry.usagePercent, 100);
+                const isOverLimit =
+                  entry.yearlyLimit > 0 && entry.yearlyContribution > entry.yearlyLimit;
+                const remainingRoom = Math.max(entry.yearlyLimit - entry.yearlyContribution, 0);
+
+                return (
+                  <article
+                    key={entry.id}
+                    className="rounded-xl border border-forest-200 bg-paper/55 p-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-forest-900">{entry.label}</p>
+                        <p className="text-xs text-forest-700/75">
+                          Based on current {entry.frequencyLabel.toLowerCase()} amount
+                        </p>
+                      </div>
+                      <p className="tabular-nums text-sm font-semibold text-forest-900">
+                        {entry.usagePercent.toFixed(1)}%
+                      </p>
+                    </div>
+
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-forest-100">
+                      <div
+                        className={`h-full rounded-full ${
+                          isOverLimit ? "bg-rose-500" : "bg-forest-600"
+                        }`}
+                        style={{ width: `${cappedUsagePercent}%` }}
+                      />
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-forest-700/90">
+                      <span className="tabular-nums">
+                        Yearly contribution: {cad.format(entry.yearlyContribution)}
+                      </span>
+                      <span className="tabular-nums">
+                        Limit: {cad.format(entry.yearlyLimit)}
+                      </span>
+                    </div>
+
+                    {entry.id === "rrsp" && entry.yearlyLimit === 0 ? (
+                      <p className="mt-2 text-xs text-forest-700/80">
+                        Enter 2025 income above to calculate RRSP room.
+                      </p>
+                    ) : isOverLimit ? (
+                      <p className="tabular-nums mt-2 text-xs text-rose-700">
+                        Over limit by {cad.format(entry.yearlyContribution - entry.yearlyLimit)}.
+                      </p>
+                    ) : (
+                      <p className="tabular-nums mt-2 text-xs text-forest-700/85">
+                        Remaining room: {cad.format(remainingRoom)}.
+                      </p>
+                    )}
+                  </article>
+                );
+              })}
             </div>
           </article>
         </div>
