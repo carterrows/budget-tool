@@ -316,9 +316,9 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   const [initialized, setInitialized] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isIncomeHelpOpen, setIsIncomeHelpOpen] = useState(false);
-  const [incomeViewMode, setIncomeViewMode] = useState<ViewMode>("edit");
+  const [incomeViewMode, setIncomeViewMode] = useState<ViewMode>("list");
   const [expenseViewMode, setExpenseViewMode] = useState<ViewMode>("list");
-  const [investmentViewMode, setInvestmentViewMode] = useState<ViewMode>("edit");
+  const [investmentViewMode, setInvestmentViewMode] = useState<ViewMode>("list");
 
   const safeDispatch = (action: Action) => {
     setHasPendingEdits(true);
