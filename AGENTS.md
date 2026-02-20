@@ -112,6 +112,7 @@ Frequency options:
 Client behavior:
 - `components/BudgetApp.tsx` autosaves with ~800ms debounce after edits.
 - Summary computes monthly net income, expenses, investments, leftover cash.
+- Summary card includes a help popup with expanded allocation metrics and annual projections.
 - Income section includes an Ontario 2026 after-tax breakdown modal.
 
 ## Rate Limiting and Security Headers
