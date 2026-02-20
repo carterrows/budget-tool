@@ -1391,19 +1391,19 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             <h4 className="text-sm font-semibold text-forest-900">Allocation of net income</h4>
             <div className="mt-3 space-y-2 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-forest-700/90">Expenses share</span>
+                <span className="text-forest-700/90">Expenses</span>
                 <span className="tabular-nums font-semibold">
                   {summaryInsights.expenseShare.toFixed(1)}%
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-forest-700/90">Investments share</span>
+                <span className="text-forest-700/90">Investments</span>
                 <span className="tabular-nums font-semibold">
                   {summaryInsights.investmentShare.toFixed(1)}%
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-forest-700/90">Leftover share</span>
+                <span className="text-forest-700/90">Leftover cash</span>
                 <span
                   className={`tabular-nums font-semibold ${
                     summaryInsights.leftoverShare < 0 ? "text-rose-700" : "text-forest-700"
