@@ -542,6 +542,22 @@ export default function BudgetApp({ username }: BudgetAppProps) {
 
   const totals = useMemo(() => calculateTotals(state), [state]);
   const summaryInsights = useMemo(() => {
+    const monthlyInvestmentTfsa = toMonthlyEquivalent(
+      state.investments.tfsa,
+      state.frequencies.investments.tfsa
+    );
+    const monthlyInvestmentFhsa = toMonthlyEquivalent(
+      state.investments.fhsa,
+      state.frequencies.investments.fhsa
+    );
+    const monthlyInvestmentRrsp = toMonthlyEquivalent(
+      state.investments.rrsp,
+      state.frequencies.investments.rrsp
+    );
+    const monthlyInvestmentEmergencyFund = toMonthlyEquivalent(
+      state.investments.emergencyFund,
+      state.frequencies.investments.emergencyFund
+    );
     const monthlyOutflow = totals.totalExpenses + totals.totalInvestments;
     const percentOfIncome = (value: number) =>
       totals.monthlyIncome > 0 ? (value / totals.monthlyIncome) * 100 : 0;
@@ -552,13 +568,30 @@ export default function BudgetApp({ username }: BudgetAppProps) {
       annualExpenses: totals.totalExpenses * 12,
       annualInvestments: totals.totalInvestments * 12,
       annualLeftover: totals.leftover * 12,
+      monthlyInvestments: {
+        tfsa: monthlyInvestmentTfsa,
+        fhsa: monthlyInvestmentFhsa,
+        rrsp: monthlyInvestmentRrsp,
+        emergencyFund: monthlyInvestmentEmergencyFund
+      },
+      annualInvestmentsByBucket: {
+        tfsa: monthlyInvestmentTfsa * 12,
+        fhsa: monthlyInvestmentFhsa * 12,
+        rrsp: monthlyInvestmentRrsp * 12,
+        emergencyFund: monthlyInvestmentEmergencyFund * 12
+      },
       expenseShare: percentOfIncome(totals.totalExpenses),
-      investmentShare: percentOfIncome(totals.totalInvestments),
+      investmentShares: {
+        tfsa: percentOfIncome(monthlyInvestmentTfsa),
+        fhsa: percentOfIncome(monthlyInvestmentFhsa),
+        rrsp: percentOfIncome(monthlyInvestmentRrsp),
+        emergencyFund: percentOfIncome(monthlyInvestmentEmergencyFund)
+      },
       leftoverShare: percentOfIncome(totals.leftover),
       coverageRatio:
         monthlyOutflow > 0 ? totals.monthlyIncome / monthlyOutflow : totals.monthlyIncome > 0 ? Infinity : null
     };
-  }, [totals]);
+  }, [totals, state]);
   const incomeBreakdown = useMemo(
     () =>
       calculateOntarioNetIncomeFromInput({
@@ -1367,10 +1400,34 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             <span className="tabular-nums font-semibold">{cad.format(totals.totalExpenses)}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-forest-700/90">Monthly investments</span>
-            <span className="tabular-nums font-semibold">{cad.format(totals.totalInvestments)}</span>
+            <span className="text-forest-700/90">Invest: TFSA</span>
+            <span className="tabular-nums font-semibold">
+              {cad.format(summaryInsights.monthlyInvestments.tfsa)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-forest-700/90">Invest: FHSA</span>
+            <span className="tabular-nums font-semibold">
+              {cad.format(summaryInsights.monthlyInvestments.fhsa)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-forest-700/90">Invest: RRSP</span>
+            <span className="tabular-nums font-semibold">
+              {cad.format(summaryInsights.monthlyInvestments.rrsp)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-forest-700/90">Invest: Emergency fund</span>
+            <span className="tabular-nums font-semibold">
+              {cad.format(summaryInsights.monthlyInvestments.emergencyFund)}
+            </span>
           </div>
           <div className="flex items-center justify-between border-t border-forest-200/80 pt-3">
+            <span className="text-forest-700/90">Total monthly investments</span>
+            <span className="tabular-nums font-semibold">{cad.format(totals.totalInvestments)}</span>
+          </div>
+          <div className="flex items-center justify-between">
             <span className="text-forest-700/90">Total monthly outflow</span>
             <span className="tabular-nums font-semibold">{cad.format(summaryInsights.monthlyOutflow)}</span>
           </div>
@@ -1391,18 +1448,6 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             <h4 className="text-sm font-semibold text-forest-900">Allocation of net income</h4>
             <div className="mt-3 space-y-2 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-forest-700/90">Expenses</span>
-                <span className="tabular-nums font-semibold">
-                  {summaryInsights.expenseShare.toFixed(1)}%
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-forest-700/90">Investments</span>
-                <span className="tabular-nums font-semibold">
-                  {summaryInsights.investmentShare.toFixed(1)}%
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
                 <span className="text-forest-700/90">Leftover cash</span>
                 <span
                   className={`tabular-nums font-semibold ${
@@ -1410,6 +1455,36 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                   }`}
                 >
                   {summaryInsights.leftoverShare.toFixed(1)}%
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Expenses</span>
+                <span className="tabular-nums font-semibold">
+                  {summaryInsights.expenseShare.toFixed(1)}%
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Invest: TFSA</span>
+                <span className="tabular-nums font-semibold">
+                  {summaryInsights.investmentShares.tfsa.toFixed(1)}%
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Invest: FHSA</span>
+                <span className="tabular-nums font-semibold">
+                  {summaryInsights.investmentShares.fhsa.toFixed(1)}%
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Invest: RRSP</span>
+                <span className="tabular-nums font-semibold">
+                  {summaryInsights.investmentShares.rrsp.toFixed(1)}%
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Invest: Emergency fund</span>
+                <span className="tabular-nums font-semibold">
+                  {summaryInsights.investmentShares.emergencyFund.toFixed(1)}%
                 </span>
               </div>
               <div className="flex items-center justify-between border-t border-forest-200/80 pt-2">
@@ -1441,12 +1516,36 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-forest-700/90">Investments</span>
+                <span className="text-forest-700/90">Invest: TFSA</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(summaryInsights.annualInvestmentsByBucket.tfsa)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Invest: FHSA</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(summaryInsights.annualInvestmentsByBucket.fhsa)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Invest: RRSP</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(summaryInsights.annualInvestmentsByBucket.rrsp)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Invest: Emergency fund</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(summaryInsights.annualInvestmentsByBucket.emergencyFund)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-t border-forest-200/80 pt-2">
+                <span className="text-forest-700/90">Total investments</span>
                 <span className="tabular-nums font-semibold">
                   {cad.format(summaryInsights.annualInvestments)}
                 </span>
               </div>
-              <div className="flex items-center justify-between border-t border-forest-200/80 pt-2">
+              <div className="flex items-center justify-between">
                 <span className="text-forest-700/90">Projected leftover</span>
                 <span
                   className={`tabular-nums font-semibold ${
