@@ -28,7 +28,14 @@ const resolveDatabasePath = (): string => {
   return fallbackPath;
 };
 
+const isSqliteBusyError = (error: unknown) =>
+  typeof error === "object" &&
+  error !== null &&
+  "code" in error &&
+  (error as { code?: string }).code === "SQLITE_BUSY";
+
 const initDatabase = (db: Database.Database) => {
+  db.pragma("busy_timeout = 5000");
   db.pragma("foreign_keys = ON");
   db.pragma("journal_mode = WAL");
 
@@ -69,7 +76,14 @@ const initDatabase = (db: Database.Database) => {
     CREATE INDEX IF NOT EXISTS idx_sessions_active_plan_id ON sessions(active_plan_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
   `);
-  db.exec("DROP TABLE IF EXISTS states");
+
+  try {
+    db.exec("DROP TABLE IF EXISTS states");
+  } catch (error) {
+    if (!isSqliteBusyError(error)) {
+      throw error;
+    }
+  }
 };
 
 const databasePath = global.__budgetDbPath ?? resolveDatabasePath();
