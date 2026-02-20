@@ -12,7 +12,7 @@ type PlanRow = {
   updated_at: string;
 };
 
-type LegacyStateRow = {
+type StateRow = {
   state_json: string;
 };
 
@@ -78,23 +78,6 @@ const getPlanRowsForUser = (userId: number): PlanRow[] => {
     .all(userId) as PlanRow[];
 };
 
-const getInitialStateForUser = (userId: number): BudgetState => {
-  const db = getDb();
-  const row = db
-    .prepare("SELECT state_json FROM states WHERE user_id = ? LIMIT 1")
-    .get(userId) as LegacyStateRow | undefined;
-
-  if (!row) {
-    return DEFAULT_STATE;
-  }
-
-  try {
-    return sanitizeBudgetState(JSON.parse(row.state_json));
-  } catch {
-    return DEFAULT_STATE;
-  }
-};
-
 const getNextPlanName = (existingNames: string[]): string => {
   for (let index = 1; index <= MAX_PLANS_PER_USER; index += 1) {
     const candidate = `Plan ${index}`;
@@ -125,14 +108,12 @@ export const ensureUserPlansInitialized = (userId: number) => {
       .run(targetUserId, "Plan 1", now, now);
     const planId = Number(created.lastInsertRowid);
 
-    const initialState = getInitialStateForUser(targetUserId);
-
     db.prepare(
       `
       INSERT INTO plan_states (plan_id, state_json, updated_at)
       VALUES (?, ?, ?)
       `
-    ).run(planId, JSON.stringify(initialState), now);
+    ).run(planId, JSON.stringify(DEFAULT_STATE), now);
 
     db.prepare(
       `
@@ -402,7 +383,7 @@ export const loadPlanState = (planId: number): BudgetState => {
   const db = getDb();
   const row = db
     .prepare("SELECT state_json FROM plan_states WHERE plan_id = ? LIMIT 1")
-    .get(planId) as LegacyStateRow | undefined;
+    .get(planId) as StateRow | undefined;
 
   if (!row) {
     return DEFAULT_STATE;

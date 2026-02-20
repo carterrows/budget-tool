@@ -29,6 +29,7 @@ const resolveDatabasePath = (): string => {
 };
 
 const initDatabase = (db: Database.Database) => {
+  db.pragma("busy_timeout = 5000");
   db.pragma("foreign_keys = ON");
   db.pragma("journal_mode = WAL");
 
@@ -38,12 +39,6 @@ const initDatabase = (db: Database.Database) => {
       username TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       created_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS states (
-      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-      state_json TEXT NOT NULL,
-      updated_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS plans (
@@ -72,23 +67,10 @@ const initDatabase = (db: Database.Database) => {
     );
 
     CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_sessions_active_plan_id ON sessions(active_plan_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
   `);
 
-  const sessionColumns = db
-    .prepare("PRAGMA table_info(sessions)")
-    .all() as Array<{ name: string }>;
-  const hasActivePlanColumn = sessionColumns.some(
-    (column) => column.name === "active_plan_id"
-  );
-
-  if (!hasActivePlanColumn) {
-    db.exec(
-      "ALTER TABLE sessions ADD COLUMN active_plan_id INTEGER REFERENCES plans(id) ON DELETE SET NULL"
-    );
-  }
-
-  db.exec("CREATE INDEX IF NOT EXISTS idx_sessions_active_plan_id ON sessions(active_plan_id)");
 };
 
 const databasePath = global.__budgetDbPath ?? resolveDatabasePath();
