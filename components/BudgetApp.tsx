@@ -387,6 +387,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   const [isIncomeHelpOpen, setIsIncomeHelpOpen] = useState(false);
   const [isExpenseChartOpen, setIsExpenseChartOpen] = useState(false);
   const [isInvestmentHelpOpen, setIsInvestmentHelpOpen] = useState(false);
+  const [isSummaryHelpOpen, setIsSummaryHelpOpen] = useState(false);
   const [incomeViewMode, setIncomeViewMode] = useState<ViewMode>("list");
   const [expenseViewMode, setExpenseViewMode] = useState<ViewMode>("list");
   const [expenseSortOrder, setExpenseSortOrder] = useState<ExpenseSortOrder>("desc");
@@ -497,7 +498,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   }, [state, initialized, hasPendingEdits]);
 
   useEffect(() => {
-    if (!isIncomeHelpOpen && !isExpenseChartOpen && !isInvestmentHelpOpen) {
+    if (!isIncomeHelpOpen && !isExpenseChartOpen && !isInvestmentHelpOpen && !isSummaryHelpOpen) {
       return;
     }
 
@@ -506,6 +507,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
         setIsIncomeHelpOpen(false);
         setIsExpenseChartOpen(false);
         setIsInvestmentHelpOpen(false);
+        setIsSummaryHelpOpen(false);
       }
     };
 
@@ -514,10 +516,10 @@ export default function BudgetApp({ username }: BudgetAppProps) {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [isIncomeHelpOpen, isExpenseChartOpen, isInvestmentHelpOpen]);
+  }, [isIncomeHelpOpen, isExpenseChartOpen, isInvestmentHelpOpen, isSummaryHelpOpen]);
 
   useEffect(() => {
-    if (!isIncomeHelpOpen && !isExpenseChartOpen && !isInvestmentHelpOpen) {
+    if (!isIncomeHelpOpen && !isExpenseChartOpen && !isInvestmentHelpOpen && !isSummaryHelpOpen) {
       return;
     }
 
@@ -530,7 +532,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousHtmlOverflow;
     };
-  }, [isIncomeHelpOpen, isExpenseChartOpen, isInvestmentHelpOpen]);
+  }, [isIncomeHelpOpen, isExpenseChartOpen, isInvestmentHelpOpen, isSummaryHelpOpen]);
 
   useEffect(() => {
     if (expenseViewMode === "edit") {
@@ -539,6 +541,24 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   }, [expenseViewMode]);
 
   const totals = useMemo(() => calculateTotals(state), [state]);
+  const summaryInsights = useMemo(() => {
+    const monthlyOutflow = totals.totalExpenses + totals.totalInvestments;
+    const percentOfIncome = (value: number) =>
+      totals.monthlyIncome > 0 ? (value / totals.monthlyIncome) * 100 : 0;
+
+    return {
+      monthlyOutflow,
+      annualIncome: totals.monthlyIncome * 12,
+      annualExpenses: totals.totalExpenses * 12,
+      annualInvestments: totals.totalInvestments * 12,
+      annualLeftover: totals.leftover * 12,
+      expenseShare: percentOfIncome(totals.totalExpenses),
+      investmentShare: percentOfIncome(totals.totalInvestments),
+      leftoverShare: percentOfIncome(totals.leftover),
+      coverageRatio:
+        monthlyOutflow > 0 ? totals.monthlyIncome / monthlyOutflow : totals.monthlyIncome > 0 ? Infinity : null
+    };
+  }, [totals]);
   const incomeBreakdown = useMemo(
     () =>
       calculateOntarioNetIncomeFromInput({
@@ -1065,7 +1085,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                   className="btn-secondary h-9 w-9 px-0 py-0 leading-none"
                 >
                   <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
-                    question_mark
+                    read_more
                   </span>
                 </button>
                 <button
@@ -1257,8 +1277,25 @@ export default function BudgetApp({ username }: BudgetAppProps) {
         </div>
 
         <aside className="card border-forest-300/90 p-6 lg:sticky lg:top-8 lg:h-fit">
-          <h2 className="text-xl font-semibold">Summary</h2>
-          <p className="mt-1 text-xs text-forest-700/75">All totals shown as monthly equivalents.</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold">Summary</h2>
+              <p className="mt-1 text-xs text-forest-700/75">
+                All totals shown as monthly equivalents.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsSummaryHelpOpen(true)}
+              aria-label="Open expanded summary details"
+              title="Open expanded summary details"
+              className="btn-secondary h-9 w-9 shrink-0 px-0 py-0 leading-none"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                read_more
+              </span>
+            </button>
+          </div>
           <div className="mt-4 space-y-4">
             <div className="flex items-center justify-between text-sm">
               <span className="text-forest-700/90">Monthly net income</span>
@@ -1291,6 +1328,138 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           </div>
         </aside>
       </div>
+
+      <ModalOverlay
+        isOpen={isSummaryHelpOpen}
+        onClose={() => setIsSummaryHelpOpen(false)}
+        labelledBy="summary-help-title"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="caps-label text-xs font-semibold uppercase text-forest-600">
+              Budget Summary
+            </p>
+            <h3 id="summary-help-title" className="mt-1 text-2xl font-semibold">
+              Expanded Monthly + Annual View
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsSummaryHelpOpen(false)}
+            className="btn-secondary h-9 px-3 py-0 text-sm"
+          >
+            Close
+          </button>
+        </div>
+
+        <p className="mt-3 text-sm text-forest-700/85">
+          This view shows where your monthly net income goes and projects the same pattern over
+          12 months using your current inputs.
+        </p>
+
+        <div className="mt-6 grid gap-3 rounded-xl border border-forest-200 bg-paper/55 p-4 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-forest-700/90">Monthly net income</span>
+            <span className="tabular-nums font-semibold">{cad.format(totals.monthlyIncome)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-forest-700/90">Monthly expenses</span>
+            <span className="tabular-nums font-semibold">{cad.format(totals.totalExpenses)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-forest-700/90">Monthly investments</span>
+            <span className="tabular-nums font-semibold">{cad.format(totals.totalInvestments)}</span>
+          </div>
+          <div className="flex items-center justify-between border-t border-forest-200/80 pt-3">
+            <span className="text-forest-700/90">Total monthly outflow</span>
+            <span className="tabular-nums font-semibold">{cad.format(summaryInsights.monthlyOutflow)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-forest-700/90">Monthly leftover cash</span>
+            <span
+              className={`tabular-nums font-semibold ${
+                totals.leftover < 0 ? "text-rose-700" : "text-forest-700"
+              }`}
+            >
+              {cad.format(totals.leftover)}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <article className="rounded-xl border border-forest-200 bg-paper/55 p-4">
+            <h4 className="text-sm font-semibold text-forest-900">Allocation of net income</h4>
+            <div className="mt-3 space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Expenses share</span>
+                <span className="tabular-nums font-semibold">
+                  {summaryInsights.expenseShare.toFixed(1)}%
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Investments share</span>
+                <span className="tabular-nums font-semibold">
+                  {summaryInsights.investmentShare.toFixed(1)}%
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Leftover share</span>
+                <span
+                  className={`tabular-nums font-semibold ${
+                    summaryInsights.leftoverShare < 0 ? "text-rose-700" : "text-forest-700"
+                  }`}
+                >
+                  {summaryInsights.leftoverShare.toFixed(1)}%
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-t border-forest-200/80 pt-2">
+                <span className="text-forest-700/90">Income coverage ratio</span>
+                <span className="tabular-nums font-semibold">
+                  {summaryInsights.coverageRatio === null
+                    ? "N/A"
+                    : summaryInsights.coverageRatio === Infinity
+                      ? "No outflow"
+                      : `${summaryInsights.coverageRatio.toFixed(2)}x`}
+                </span>
+              </div>
+            </div>
+          </article>
+
+          <article className="rounded-xl border border-forest-200 bg-paper/55 p-4">
+            <h4 className="text-sm font-semibold text-forest-900">12-month projection</h4>
+            <div className="mt-3 space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Net income</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(summaryInsights.annualIncome)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Expenses</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(summaryInsights.annualExpenses)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-forest-700/90">Investments</span>
+                <span className="tabular-nums font-semibold">
+                  {cad.format(summaryInsights.annualInvestments)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-t border-forest-200/80 pt-2">
+                <span className="text-forest-700/90">Projected leftover</span>
+                <span
+                  className={`tabular-nums font-semibold ${
+                    summaryInsights.annualLeftover < 0 ? "text-rose-700" : "text-forest-700"
+                  }`}
+                >
+                  {cad.format(summaryInsights.annualLeftover)}
+                </span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </ModalOverlay>
 
       <ModalOverlay
         isOpen={isIncomeHelpOpen}

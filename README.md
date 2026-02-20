@@ -18,6 +18,7 @@ The app supports up to 3 budget plans per user and keeps user state isolated by 
   - investments: `tfsa`, `fhsa`, `rrsp`, `emergencyFund` (monthly or bi-weekly per bucket)
 - Autosave (~800ms debounce) to SQLite state for the active plan.
 - Monthly summary: net income, total expenses, total investments, leftover cash.
+- Expanded summary popup: allocation percentages, coverage ratio, and 12-month projections.
 - Ontario 2026 income tax/deduction model used for monthly net income.
 
 ## Tech Stack
