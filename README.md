@@ -2,17 +2,21 @@
 
 Self-hosted personal budgeting app built with Next.js App Router, TypeScript, Tailwind CSS, SQLite, and cookie sessions.
 
-The app stores one current budget snapshot per user and keeps user state isolated by account.
+The app supports up to 3 budget plans per user and keeps user state isolated by account.
 
 ## Features
 - Username/password auth with server-side sessions.
 - Optional dev login shortcut outside production.
+- Multi-plan support:
+  - up to 3 plans per user
+  - switch, create, rename, and delete plans
+  - dedicated plans management page
 - Budget editor with:
   - yearly salary
   - bonus (none, fixed amount, or % of salary)
   - expenses (monthly or bi-weekly frequency)
   - investments: `tfsa`, `fhsa`, `rrsp`, `emergencyFund` (monthly or bi-weekly per bucket)
-- Autosave (~800ms debounce) to per-user SQLite state.
+- Autosave (~800ms debounce) to SQLite state for the active plan.
 - Monthly summary: net income, total expenses, total investments, leftover cash.
 - Ontario 2026 income tax/deduction model used for monthly net income.
 
@@ -91,7 +95,7 @@ Important:
 - Session TTL: 30 days
 - Session storage table: `sessions`
 - Expired session cleanup runs in-process periodically during requests
-- Mutating auth/state routes enforce origin/host match (`Origin` vs `Host`/`X-Forwarded-Host`)
+- Mutating auth/state/plan routes enforce origin/host match (`Origin` vs `Host`/`X-Forwarded-Host`)
 
 ## API Endpoints
 - `POST /api/auth/signup`
@@ -102,8 +106,13 @@ Important:
 - `POST /api/auth/logout`
 - `POST /api/auth/dev-login` (non-production only, if enabled)
 - `GET /api/me` -> returns `{ username }` when authenticated
-- `GET /api/state` -> returns saved state or default state
-- `PUT /api/state` -> sanitizes and saves full current state
+- `GET /api/state` -> returns state for active plan and plan metadata
+- `PUT /api/state` -> sanitizes and saves full current state for active plan
+- `GET /api/plans` -> returns plans list, active plan id, max plans
+- `POST /api/plans` -> creates a new default-state plan and makes it active
+- `POST /api/plans/switch` -> sets active plan for current session
+- `PATCH /api/plans/:planId` -> renames plan
+- `DELETE /api/plans/:planId` -> deletes plan (cannot delete last remaining plan)
 
 ## Budget Limits and Sanitization
 Server-side sanitization happens in `lib/budget-state.ts`.
@@ -122,12 +131,14 @@ Frequency values:
 ## Database Model
 Tables:
 - `users(id, username UNIQUE, password_hash, created_at)`
-- `states(user_id PRIMARY KEY, state_json, updated_at)`
-- `sessions(id, user_id, token_hash UNIQUE, expires_at, created_at)`
+- `plans(id, user_id, name, created_at, updated_at)`
+- `plan_states(plan_id PRIMARY KEY, state_json, updated_at)`
+- `sessions(id, user_id, token_hash UNIQUE, active_plan_id, expires_at, created_at)`
 
 State persistence:
-- one JSON snapshot per user in `states.state_json`
-- overwrite-on-save via upsert
+- one JSON snapshot per plan in `plan_states.state_json`
+- active plan stored per session in `sessions.active_plan_id`
+- overwrite-on-save via upsert for active plan
 
 ## API Security Headers and Rate Limits
 Applied by `proxy.ts` on `/api/:path*`.

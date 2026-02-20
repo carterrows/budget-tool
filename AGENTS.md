@@ -20,13 +20,20 @@
 ## Repository Map
 - `app/page.tsx`: login/signup landing page.
 - `app/budget/page.tsx`: authenticated budget UI page.
+- `app/plans/page.tsx`: authenticated plans manager page.
 - `components/LoginForm.tsx`: login/signup/dev-login client form.
 - `components/BudgetApp.tsx`: main budget editor UI + autosave + monthly summary.
+- `components/PlansManager.tsx`: plans list/create/switch/rename/delete UI.
 - `app/api/auth/*`: auth endpoints (`login`, `signup`, `logout`, `dev-login`).
 - `app/api/me/route.ts`: current authenticated user.
 - `app/api/state/route.ts`: load/save budget state.
+- `app/api/plans/route.ts`: list/create plans.
+- `app/api/plans/switch/route.ts`: set active plan.
+- `app/api/plans/[planId]/route.ts`: rename/delete plan.
 - `lib/db.ts`: SQLite connection + schema bootstrap.
 - `lib/auth.ts`: password hashing, sessions, cookie helpers, dev login helpers.
+- `lib/plans.ts`: plan CRUD/state helpers and plan/session resolution.
+- `lib/plan-config.ts`: plan limits/config constants.
 - `lib/csrf.ts`: same-origin check for mutating requests.
 - `lib/budget-state.ts`: state defaults, validation/sanitization, totals.
 - `lib/tax.ts`: Ontario 2026 tax/deduction model.
@@ -39,12 +46,15 @@ Database path comes from `DATABASE_PATH` (default `/data/budget.db`, fallback to
 
 Tables created in `lib/db.ts`:
 - `users(id, username UNIQUE, password_hash, created_at)`
-- `states(user_id PRIMARY KEY -> users.id, state_json, updated_at)`
-- `sessions(id, user_id -> users.id, token_hash UNIQUE, expires_at, created_at)`
+- `plans(id, user_id -> users.id, name, created_at, updated_at)`
+- `plan_states(plan_id PRIMARY KEY -> plans.id, state_json, updated_at)`
+- `sessions(id, user_id -> users.id, token_hash UNIQUE, active_plan_id -> plans.id, expires_at, created_at)`
 
 Behavior:
-- Per-user budget state is stored as JSON in `states.state_json`.
-- State is upserted and overwritten on each save (single current snapshot per user).
+- Per-plan budget state is stored as JSON in `plan_states.state_json`.
+- `/api/state` always loads/saves against the active plan for the current session.
+- Active plan is tracked in `sessions.active_plan_id`.
+- Users can have up to 3 plans.
 - Session cleanup of expired rows runs periodically in-process (every ~5 minutes when requests occur).
 
 ## Auth and Session Model
@@ -52,7 +62,8 @@ Behavior:
 - Cookie flags: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` controlled by `SECURE_COOKIES`.
 - Session TTL: 30 days.
 - Password hashing: `bcryptjs` (cost 12).
-- CSRF check for mutating auth/state routes: `Origin` host must match request host (`lib/csrf.ts`).
+- Session rows track `active_plan_id` for current plan context.
+- CSRF check for mutating auth/state/plan routes: `Origin` host must match request host (`lib/csrf.ts`).
 - Dev login:
   - Enabled only when `NODE_ENV !== "production"` and `DEV_LOGIN_ENABLED !== "false"`.
   - Uses/creates user from `DEV_LOGIN_USERNAME` (default `dev-user`).
@@ -71,9 +82,19 @@ Behavior:
 - `GET /api/me`
   - Returns `{ username }` when authenticated, else 401.
 - `GET /api/state`
-  - Returns saved state or `DEFAULT_STATE`.
+  - Returns active plan state + active plan metadata.
 - `PUT /api/state`
-  - Sanitizes and upserts submitted state.
+  - Sanitizes and upserts submitted state for active plan.
+- `GET /api/plans`
+  - Returns plans list, active plan id, max plans.
+- `POST /api/plans`
+  - Creates a new plan (default state) and makes it active.
+- `POST /api/plans/switch`
+  - Switches active plan for current session.
+- `PATCH /api/plans/:planId`
+  - Renames a plan.
+- `DELETE /api/plans/:planId`
+  - Deletes a plan (cannot delete last remaining plan).
 
 ## Budget Domain Rules
 Sanitization happens server-side in `lib/budget-state.ts`.
