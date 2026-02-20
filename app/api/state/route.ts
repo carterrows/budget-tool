@@ -1,32 +1,35 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
-import { DEFAULT_STATE, sanitizeBudgetState } from "@/lib/budget-state";
+import { getCurrentSession } from "@/lib/auth";
 import { hasValidOrigin } from "@/lib/csrf";
-import { getDb } from "@/lib/db";
+import { PlanOperationError, getActivePlanForSession, loadPlanState, savePlanState } from "@/lib/plans";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const user = await getCurrentUser();
-  if (!user) {
+  const session = await getCurrentSession();
+  if (!session) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
-  const db = getDb();
-  const row = db
-    .prepare("SELECT state_json FROM states WHERE user_id = ? LIMIT 1")
-    .get(user.id) as { state_json: string } | undefined;
-
-  if (!row) {
-    return NextResponse.json({ state: DEFAULT_STATE });
-  }
-
   try {
-    const parsed = JSON.parse(row.state_json) as unknown;
-    return NextResponse.json({ state: sanitizeBudgetState(parsed) });
-  } catch {
-    return NextResponse.json({ state: DEFAULT_STATE });
+    const activePlan = getActivePlanForSession(
+      session.user.id,
+      session.sessionId,
+      session.activePlanId
+    );
+    const state = loadPlanState(activePlan.id);
+
+    return NextResponse.json({
+      state,
+      activePlan
+    });
+  } catch (error) {
+    if (error instanceof PlanOperationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ error: "Unable to load plan state." }, { status: 500 });
   }
 }
 
@@ -35,8 +38,8 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
   }
 
-  const user = await getCurrentUser();
-  if (!user) {
+  const session = await getCurrentSession();
+  if (!session) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
@@ -47,19 +50,20 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const state = sanitizeBudgetState(payload);
-  const now = new Date().toISOString();
+  try {
+    const activePlan = getActivePlanForSession(
+      session.user.id,
+      session.sessionId,
+      session.activePlanId
+    );
+    const { state, updatedAt } = savePlanState(activePlan.id, payload);
 
-  const db = getDb();
-  db.prepare(
-    `
-    INSERT INTO states (user_id, state_json, updated_at)
-    VALUES (?, ?, ?)
-    ON CONFLICT(user_id) DO UPDATE SET
-      state_json = excluded.state_json,
-      updated_at = excluded.updated_at
-    `
-  ).run(user.id, JSON.stringify(state), now);
+    return NextResponse.json({ state, updatedAt, activePlan });
+  } catch (error) {
+    if (error instanceof PlanOperationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
 
-  return NextResponse.json({ state, updatedAt: now });
+    return NextResponse.json({ error: "Unable to save plan state." }, { status: 500 });
+  }
 }
