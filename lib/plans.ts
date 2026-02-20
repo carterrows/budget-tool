@@ -27,7 +27,11 @@ export type BudgetPlan = {
   updatedAt: string;
 };
 
-type PlanErrorCode = "PLAN_LIMIT_REACHED" | "PLAN_NOT_FOUND" | "LAST_PLAN_DELETE_BLOCKED";
+type PlanErrorCode =
+  | "PLAN_LIMIT_REACHED"
+  | "PLAN_NOT_FOUND"
+  | "LAST_PLAN_DELETE_BLOCKED"
+  | "INVALID_PLAN_NAME";
 
 export class PlanOperationError extends Error {
   code: PlanErrorCode;
@@ -37,6 +41,21 @@ export class PlanOperationError extends Error {
     this.code = code;
   }
 }
+
+const MAX_PLAN_NAME_LENGTH = 40;
+
+const sanitizePlanName = (value: unknown): string | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length < 1 || trimmed.length > MAX_PLAN_NAME_LENGTH) {
+    return null;
+  }
+
+  return trimmed;
+};
 
 const toPlan = (row: PlanRow): BudgetPlan => ({
   id: row.id,
@@ -315,6 +334,68 @@ export const deletePlanForSession = (userId: number, sessionId: number, planId: 
   });
 
   return remove(userId, sessionId, planId);
+};
+
+export const renamePlanForSession = (
+  userId: number,
+  sessionId: number,
+  planId: number,
+  nextNameInput: unknown
+) => {
+  ensureUserPlansInitialized(userId);
+  const nextName = sanitizePlanName(nextNameInput);
+
+  if (!nextName) {
+    throw new PlanOperationError(
+      "INVALID_PLAN_NAME",
+      "Plan name must be between 1 and 40 characters."
+    );
+  }
+
+  const db = getDb();
+  const update = db.transaction(
+    (
+      targetUserId: number,
+      targetSessionId: number,
+      targetPlanId: number,
+      targetName: string
+    ) => {
+      const existingPlan = getPlanForUserOrNull(targetUserId, targetPlanId);
+      if (!existingPlan) {
+        throw new PlanOperationError("PLAN_NOT_FOUND", "Plan not found.");
+      }
+
+      const now = new Date().toISOString();
+      db.prepare(
+        `
+        UPDATE plans
+        SET name = ?, updated_at = ?
+        WHERE id = ? AND user_id = ?
+        `
+      ).run(targetName, now, targetPlanId, targetUserId);
+
+      const sessionActivePlanId = getSessionActivePlanId(targetSessionId, targetUserId);
+      const listPayload = listPlansForSession(
+        targetUserId,
+        targetSessionId,
+        sessionActivePlanId
+      );
+      const activePlan = listPayload.plans.find(
+        (plan) => plan.id === listPayload.activePlanId
+      );
+
+      if (!activePlan) {
+        throw new Error("Unable to resolve active plan.");
+      }
+
+      return {
+        ...listPayload,
+        activePlan
+      };
+    }
+  );
+
+  return update(userId, sessionId, planId, nextName);
 };
 
 export const loadPlanState = (planId: number): BudgetState => {

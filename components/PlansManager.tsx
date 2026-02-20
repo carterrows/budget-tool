@@ -44,6 +44,8 @@ export default function PlansManager({ username }: PlansManagerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
 
   const isAtPlanLimit = plans.length >= maxPlans;
 
@@ -181,6 +183,54 @@ export default function PlansManager({ username }: PlansManagerProps) {
     }
   };
 
+  const startRename = (plan: Plan) => {
+    if (pendingAction !== null) {
+      return;
+    }
+
+    setEditingPlanId(plan.id);
+    setRenameDraft(plan.name);
+    setError("");
+  };
+
+  const cancelRename = () => {
+    setEditingPlanId(null);
+    setRenameDraft("");
+  };
+
+  const renamePlan = async (planId: number) => {
+    setPendingAction(`rename-${planId}`);
+    setError("");
+
+    try {
+      const response = await fetch(`/api/plans/${planId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ name: renameDraft })
+      });
+
+      if (response.status === 401) {
+        router.push("/");
+        router.refresh();
+        return;
+      }
+
+      const payload = (await response.json()) as PlansPayload & { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to rename plan.");
+      }
+
+      applyPayload(payload);
+      cancelRename();
+    } catch (renameError) {
+      setError(renameError instanceof Error ? renameError.message : "Unable to rename plan.");
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
   if (loading) {
     return (
       <section className="card mx-auto max-w-4xl p-8">
@@ -250,6 +300,7 @@ export default function PlansManager({ username }: PlansManagerProps) {
             const isActive = plan.id === activePlanId;
             const isSwitching = pendingAction === `switch-${plan.id}`;
             const isDeleting = pendingAction === `delete-${plan.id}`;
+            const isEditing = editingPlanId === plan.id;
 
             return (
               <li
@@ -259,7 +310,65 @@ export default function PlansManager({ username }: PlansManagerProps) {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-semibold text-forest-900">{plan.name}</h3>
+                      {isEditing ? (
+                        <form
+                          className="flex items-center gap-2"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            void renamePlan(plan.id);
+                          }}
+                        >
+                          <input
+                            type="text"
+                            value={renameDraft}
+                            maxLength={40}
+                            autoFocus
+                            disabled={pendingAction !== null}
+                            onChange={(event) => setRenameDraft(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Escape") {
+                                event.preventDefault();
+                                cancelRename();
+                              }
+                            }}
+                            className="input h-8 w-44 py-1 text-sm"
+                            aria-label={`Rename ${plan.name}`}
+                          />
+                          <button
+                            type="submit"
+                            disabled={pendingAction !== null}
+                            aria-label={`Confirm rename for ${plan.name}`}
+                            title="Confirm rename"
+                            className="btn-primary flex h-8 w-8 items-center justify-center px-0 py-0"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="material-symbols-outlined text-[20px]"
+                            >
+                              check
+                            </span>
+                          </button>
+                        </form>
+                      ) : (
+                        <>
+                          <h3 className="text-lg font-semibold text-forest-900">{plan.name}</h3>
+                          <button
+                            type="button"
+                            aria-label={`Rename ${plan.name}`}
+                            title="Rename plan"
+                            disabled={pendingAction !== null}
+                            onClick={() => startRename(plan)}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-forest-600 hover:bg-forest-100 hover:text-forest-900 disabled:opacity-60"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="material-symbols-outlined text-[16px]"
+                            >
+                              edit
+                            </span>
+                          </button>
+                        </>
+                      )}
                       {isActive ? (
                         <span className="rounded-full bg-forest-100 px-2 py-0.5 text-xs font-semibold text-forest-700">
                           Active
