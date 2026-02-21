@@ -75,9 +75,11 @@ Current defaults:
 - `ALLOW_SIGNUP: "true"`
 - `SECURE_COOKIES: "false"`
 - Host bind: `4050:4050`
+- Uses host-native container architecture by default (faster on Windows/x86_64 and ARM hosts).
 
 Important:
 - Because this file sets `NODE_ENV: production`, dev login is disabled in this mode.
+- If you need to force ARM images on non-ARM hosts, set `DOCKER_DEFAULT_PLATFORM=linux/arm64` before running compose.
 
 ## Environment Variables
 - `PORT` (default `4050`)

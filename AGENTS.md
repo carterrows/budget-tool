@@ -149,9 +149,10 @@ Client behavior:
   - binds `4050:4050`
   - sets `ALLOW_SIGNUP: "true"`
   - uses `SECURE_COOKIES: "false"`
-  - keeps `platform: linux/arm64`
+  - uses host-native container architecture (no pinned `platform`)
 
 ## Known Context/Gotchas
 - There is no automated test suite in this repo right now.
 - `docker-compose-dev.yml` uses `NODE_ENV: production`, so dev login is disabled there unless compose env is changed.
+- To force ARM images on non-ARM hosts for local testing, set `DOCKER_DEFAULT_PLATFORM=linux/arm64`.
 - If adding DB-using API routes, keep Node runtime and server-only imports (`better-sqlite3`).

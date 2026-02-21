@@ -3,7 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    platform: linux/arm64
     environment:
       NODE_ENV: production
       PORT: 4050
