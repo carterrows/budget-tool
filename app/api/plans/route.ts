@@ -51,8 +51,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
+  let body: unknown = undefined;
+  const rawBody = await request.text();
+  if (rawBody.trim().length > 0) {
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    }
+  }
+
   try {
-    const payload = createPlanForSession(session.user.id, session.sessionId);
+    const payload = createPlanForSession(session.user.id, session.sessionId, body);
 
     return NextResponse.json({
       ...payload,
