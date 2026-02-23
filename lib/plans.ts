@@ -1,7 +1,7 @@
 import { DEFAULT_STATE, sanitizeBudgetState } from "./budget-state";
 import { getDb } from "./db";
 import { MAX_PLANS_PER_USER } from "./plan-config";
-import type { BudgetState } from "./types";
+import type { BudgetState, InvestmentState } from "./types";
 
 export { MAX_PLANS_PER_USER };
 
@@ -14,6 +14,10 @@ type PlanRow = {
 
 type StateRow = {
   state_json: string;
+};
+
+type OwnedStateRow = {
+  state_json: string | null;
 };
 
 type SessionActivePlanRow = {
@@ -31,7 +35,17 @@ type PlanErrorCode =
   | "PLAN_LIMIT_REACHED"
   | "PLAN_NOT_FOUND"
   | "LAST_PLAN_DELETE_BLOCKED"
-  | "INVALID_PLAN_NAME";
+  | "INVALID_PLAN_NAME"
+  | "INVALID_PLAN_COPY_SELECTION";
+
+type InvestmentField = keyof InvestmentState;
+
+const INVESTMENT_FIELDS: InvestmentField[] = [
+  "tfsa",
+  "fhsa",
+  "rrsp",
+  "emergencyFund"
+];
 
 export class PlanOperationError extends Error {
   code: PlanErrorCode;
@@ -55,6 +69,181 @@ const sanitizePlanName = (value: unknown): string | null => {
   }
 
   return trimmed;
+};
+
+type CreatePlanCopyIncomeInput = {
+  planId: number;
+};
+
+type CreatePlanCopyExpensesInput = {
+  planId: number;
+  expenseIndexes: number[];
+};
+
+type CreatePlanCopyInvestmentsInput = {
+  planId: number;
+  fields: InvestmentField[];
+};
+
+type CreatePlanCopyInput = {
+  income?: CreatePlanCopyIncomeInput | null;
+  expenses?: CreatePlanCopyExpensesInput | null;
+  investments?: CreatePlanCopyInvestmentsInput | null;
+};
+
+const toPositiveInteger = (value: unknown): number | null => {
+  if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
+    return null;
+  }
+
+  return value;
+};
+
+const parseCopyIncomeInput = (input: unknown): CreatePlanCopyIncomeInput | null => {
+  if (input === undefined || input === null) {
+    return null;
+  }
+
+  if (!input || typeof input !== "object") {
+    throw new PlanOperationError(
+      "INVALID_PLAN_COPY_SELECTION",
+      "Invalid income copy selection."
+    );
+  }
+
+  const planId = toPositiveInteger((input as Record<string, unknown>).planId);
+  if (!planId) {
+    throw new PlanOperationError(
+      "INVALID_PLAN_COPY_SELECTION",
+      "Income copy requires a valid source plan."
+    );
+  }
+
+  return { planId };
+};
+
+const parseCopyExpensesInput = (input: unknown): CreatePlanCopyExpensesInput | null => {
+  if (input === undefined || input === null) {
+    return null;
+  }
+
+  if (!input || typeof input !== "object") {
+    throw new PlanOperationError(
+      "INVALID_PLAN_COPY_SELECTION",
+      "Invalid expenses copy selection."
+    );
+  }
+
+  const candidate = input as Record<string, unknown>;
+  const planId = toPositiveInteger(candidate.planId);
+  if (!planId) {
+    throw new PlanOperationError(
+      "INVALID_PLAN_COPY_SELECTION",
+      "Expenses copy requires a valid source plan."
+    );
+  }
+
+  if (!Array.isArray(candidate.expenseIndexes)) {
+    throw new PlanOperationError(
+      "INVALID_PLAN_COPY_SELECTION",
+      "Expenses copy requires selected entries."
+    );
+  }
+
+  const normalized = new Set<number>();
+  for (const value of candidate.expenseIndexes) {
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+      throw new PlanOperationError(
+        "INVALID_PLAN_COPY_SELECTION",
+        "Expenses copy contains invalid entries."
+      );
+    }
+    normalized.add(value);
+  }
+
+  return {
+    planId,
+    expenseIndexes: [...normalized].sort((left, right) => left - right)
+  };
+};
+
+const parseCopyInvestmentsInput = (
+  input: unknown
+): CreatePlanCopyInvestmentsInput | null => {
+  if (input === undefined || input === null) {
+    return null;
+  }
+
+  if (!input || typeof input !== "object") {
+    throw new PlanOperationError(
+      "INVALID_PLAN_COPY_SELECTION",
+      "Invalid investments copy selection."
+    );
+  }
+
+  const candidate = input as Record<string, unknown>;
+  const planId = toPositiveInteger(candidate.planId);
+  if (!planId) {
+    throw new PlanOperationError(
+      "INVALID_PLAN_COPY_SELECTION",
+      "Investments copy requires a valid source plan."
+    );
+  }
+
+  if (!Array.isArray(candidate.fields)) {
+    throw new PlanOperationError(
+      "INVALID_PLAN_COPY_SELECTION",
+      "Investments copy requires selected entries."
+    );
+  }
+
+  const normalized = new Set<InvestmentField>();
+  for (const value of candidate.fields) {
+    if (typeof value !== "string" || !INVESTMENT_FIELDS.includes(value as InvestmentField)) {
+      throw new PlanOperationError(
+        "INVALID_PLAN_COPY_SELECTION",
+        "Investments copy contains invalid entries."
+      );
+    }
+    normalized.add(value as InvestmentField);
+  }
+
+  return {
+    planId,
+    fields: [...normalized]
+  };
+};
+
+const parseCreatePlanCopyInput = (input: unknown): CreatePlanCopyInput => {
+  if (input === undefined || input === null) {
+    return {};
+  }
+
+  if (!input || typeof input !== "object") {
+    throw new PlanOperationError(
+      "INVALID_PLAN_COPY_SELECTION",
+      "Invalid create plan options."
+    );
+  }
+
+  const copyCandidate = (input as Record<string, unknown>).copy;
+  if (copyCandidate === undefined || copyCandidate === null) {
+    return {};
+  }
+
+  if (!copyCandidate || typeof copyCandidate !== "object") {
+    throw new PlanOperationError(
+      "INVALID_PLAN_COPY_SELECTION",
+      "Invalid plan copy options."
+    );
+  }
+
+  const source = copyCandidate as Record<string, unknown>;
+  return {
+    income: parseCopyIncomeInput(source.income),
+    expenses: parseCopyExpensesInput(source.expenses),
+    investments: parseCopyInvestmentsInput(source.investments)
+  };
 };
 
 const toPlan = (row: PlanRow): BudgetPlan => ({
@@ -161,6 +350,85 @@ const getSessionActivePlanId = (sessionId: number, userId: number): number | nul
   return row?.active_plan_id ?? null;
 };
 
+const loadOwnedPlanState = (userId: number, planId: number): BudgetState => {
+  const db = getDb();
+  const row = db
+    .prepare(
+      `
+      SELECT ps.state_json
+      FROM plans p
+      LEFT JOIN plan_states ps ON ps.plan_id = p.id
+      WHERE p.user_id = ? AND p.id = ?
+      LIMIT 1
+      `
+    )
+    .get(userId, planId) as OwnedStateRow | undefined;
+
+  if (!row) {
+    throw new PlanOperationError("PLAN_NOT_FOUND", "Plan not found.");
+  }
+
+  if (!row.state_json) {
+    return DEFAULT_STATE;
+  }
+
+  try {
+    return sanitizeBudgetState(JSON.parse(row.state_json));
+  } catch {
+    return DEFAULT_STATE;
+  }
+};
+
+const buildPlanStateFromCopyInput = (userId: number, input: unknown): BudgetState => {
+  const copy = parseCreatePlanCopyInput(input);
+  const hasCopySelection = Boolean(copy.income || copy.expenses || copy.investments);
+  if (!hasCopySelection) {
+    return DEFAULT_STATE;
+  }
+
+  const nextState = sanitizeBudgetState(DEFAULT_STATE);
+  const sourceStates = new Map<number, BudgetState>();
+  const getSourceState = (planId: number) => {
+    const existing = sourceStates.get(planId);
+    if (existing) {
+      return existing;
+    }
+
+    const loaded = loadOwnedPlanState(userId, planId);
+    sourceStates.set(planId, loaded);
+    return loaded;
+  };
+
+  if (copy.income) {
+    const source = getSourceState(copy.income.planId);
+    nextState.yearlySalary = source.yearlySalary;
+    nextState.bonusType = source.bonusType;
+    nextState.bonusValue = source.bonusValue;
+    nextState.rrspIncome2025 = source.rrspIncome2025;
+  }
+
+  if (copy.expenses) {
+    const source = getSourceState(copy.expenses.planId);
+    const selected = new Set(copy.expenses.expenseIndexes);
+    const selectedExpenses = source.expenses
+      .filter((_, index) => selected.has(index))
+      .map((expense) => ({ ...expense }));
+    if (selectedExpenses.length > 0) {
+      nextState.expenses = selectedExpenses;
+    }
+  }
+
+  if (copy.investments) {
+    const source = getSourceState(copy.investments.planId);
+    for (const field of copy.investments.fields) {
+      nextState.investments[field] = source.investments[field];
+      nextState.frequencies.investments[field] = source.frequencies.investments[field];
+    }
+  }
+
+  return sanitizeBudgetState(nextState);
+};
+
 const setSessionActivePlanId = (sessionId: number, userId: number, planId: number) => {
   const db = getDb();
   db.prepare(
@@ -209,6 +477,22 @@ export const getActivePlanForSession = (
   return activePlan;
 };
 
+export const getPlanStateForUser = (userId: number, planId: number) => {
+  ensureUserPlansInitialized(userId);
+  const plan = getPlanForUserOrNull(userId, planId);
+
+  if (!plan) {
+    throw new PlanOperationError("PLAN_NOT_FOUND", "Plan not found.");
+  }
+
+  const state = loadOwnedPlanState(userId, planId);
+
+  return {
+    plan,
+    state
+  };
+};
+
 export const switchActivePlanForSession = (userId: number, sessionId: number, planId: number) => {
   ensureUserPlansInitialized(userId);
   const plan = getPlanForUserOrNull(userId, planId);
@@ -221,50 +505,64 @@ export const switchActivePlanForSession = (userId: number, sessionId: number, pl
   return plan;
 };
 
-export const createPlanForSession = (userId: number, sessionId: number) => {
+export const createPlanForSession = (
+  userId: number,
+  sessionId: number,
+  createOptionsInput?: unknown
+) => {
   ensureUserPlansInitialized(userId);
   const db = getDb();
 
-  const create = db.transaction((targetUserId: number, targetSessionId: number) => {
-    const plans = getPlanRowsForUser(targetUserId);
-    if (plans.length >= MAX_PLANS_PER_USER) {
-      throw new PlanOperationError("PLAN_LIMIT_REACHED", "Plan limit reached.");
+  const create = db.transaction(
+    (
+      targetUserId: number,
+      targetSessionId: number,
+      targetCreateOptionsInput: unknown
+    ) => {
+      const plans = getPlanRowsForUser(targetUserId);
+      if (plans.length >= MAX_PLANS_PER_USER) {
+        throw new PlanOperationError("PLAN_LIMIT_REACHED", "Plan limit reached.");
+      }
+
+      const now = new Date().toISOString();
+      const planName = getNextPlanName(plans.map((plan) => plan.name));
+      const initialState = buildPlanStateFromCopyInput(
+        targetUserId,
+        targetCreateOptionsInput
+      );
+      const created = db
+        .prepare("INSERT INTO plans (user_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)")
+        .run(targetUserId, planName, now, now);
+      const planId = Number(created.lastInsertRowid);
+
+      db.prepare(
+        `
+        INSERT INTO plan_states (plan_id, state_json, updated_at)
+        VALUES (?, ?, ?)
+        `
+      ).run(planId, JSON.stringify(initialState), now);
+
+      db.prepare(
+        `
+        UPDATE sessions
+        SET active_plan_id = ?
+        WHERE id = ? AND user_id = ?
+        `
+      ).run(planId, targetSessionId, targetUserId);
+
+      const createdPlan = getPlanForUserOrNull(targetUserId, planId);
+      if (!createdPlan) {
+        throw new Error("Unable to create plan.");
+      }
+
+      return {
+        plan: createdPlan,
+        plans: getPlanRowsForUser(targetUserId).map(toPlan)
+      };
     }
+  );
 
-    const now = new Date().toISOString();
-    const planName = getNextPlanName(plans.map((plan) => plan.name));
-    const created = db
-      .prepare("INSERT INTO plans (user_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)")
-      .run(targetUserId, planName, now, now);
-    const planId = Number(created.lastInsertRowid);
-
-    db.prepare(
-      `
-      INSERT INTO plan_states (plan_id, state_json, updated_at)
-      VALUES (?, ?, ?)
-      `
-    ).run(planId, JSON.stringify(DEFAULT_STATE), now);
-
-    db.prepare(
-      `
-      UPDATE sessions
-      SET active_plan_id = ?
-      WHERE id = ? AND user_id = ?
-      `
-    ).run(planId, targetSessionId, targetUserId);
-
-    const createdPlan = getPlanForUserOrNull(targetUserId, planId);
-    if (!createdPlan) {
-      throw new Error("Unable to create plan.");
-    }
-
-    return {
-      plan: createdPlan,
-      plans: getPlanRowsForUser(targetUserId).map(toPlan)
-    };
-  });
-
-  const result = create(userId, sessionId);
+  const result = create(userId, sessionId, createOptionsInput);
 
   return {
     ...result,
