@@ -13,6 +13,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
+RUN npm prune --omit=dev
 
 FROM node:24.13.0-alpine AS runner
 WORKDIR /app
