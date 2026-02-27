@@ -4,6 +4,8 @@ Self-hosted personal budgeting app built with Next.js App Router, TypeScript, Ta
 
 The app supports up to 3 budget plans per user and keeps user state isolated by account.
 
+![Budget Tool demo](public/demo.gif)
+
 ## Features
 - Username/password auth with server-side sessions.
 - Optional dev login shortcut outside production.
