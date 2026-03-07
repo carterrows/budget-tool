@@ -536,13 +536,6 @@ export default function BudgetApp({ username }: BudgetAppProps) {
     };
   }, [isIncomeHelpOpen, isExpenseChartOpen, isInvestmentHelpOpen, isSummaryHelpOpen]);
 
-  useEffect(() => {
-    if (expenseViewMode === "edit") {
-      setIsExpenseChartOpen(false);
-      setShowAllExpenses(false);
-    }
-  }, [expenseViewMode]);
-
   const totals = useMemo(() => calculateTotals(state), [state]);
   const summaryInsights = useMemo(() => {
     const monthlyInvestmentTfsa = toMonthlyEquivalent(
@@ -627,6 +620,12 @@ export default function BudgetApp({ username }: BudgetAppProps) {
     showAllExpenses || !hasMoreExpensesThanPreview
       ? sortedExpenses
       : sortedExpenses.slice(0, EXPENSES_PREVIEW_COUNT);
+  useEffect(() => {
+    if (expenseViewMode === "edit" || (!hasMoreExpensesThanPreview && showAllExpenses)) {
+      setIsExpenseChartOpen(false);
+      setShowAllExpenses(false);
+    }
+  }, [expenseViewMode, hasMoreExpensesThanPreview, showAllExpenses]);
   const expenseChart = useMemo(() => {
     const slices = state.expenses
       .map((expense, index) => ({
@@ -734,12 +733,6 @@ export default function BudgetApp({ username }: BudgetAppProps) {
     state.investments.rrsp,
     state.investments.tfsa
   ]);
-
-  useEffect(() => {
-    if (!hasMoreExpensesThanPreview && showAllExpenses) {
-      setShowAllExpenses(false);
-    }
-  }, [hasMoreExpensesThanPreview, showAllExpenses]);
 
   const logout = async () => {
     setIsLoggingOut(true);
