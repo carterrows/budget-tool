@@ -48,6 +48,7 @@ type Action =
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 type ViewMode = "list" | "edit";
 type ExpenseSortOrder = "asc" | "desc";
+const EXPENSES_PREVIEW_COUNT = 4;
 
 const cad = new Intl.NumberFormat("en-CA", {
   style: "currency",
@@ -391,6 +392,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   const [incomeViewMode, setIncomeViewMode] = useState<ViewMode>("list");
   const [expenseViewMode, setExpenseViewMode] = useState<ViewMode>("list");
   const [expenseSortOrder, setExpenseSortOrder] = useState<ExpenseSortOrder>("desc");
+  const [showAllExpenses, setShowAllExpenses] = useState(false);
   const [investmentViewMode, setInvestmentViewMode] = useState<ViewMode>("list");
 
   const safeDispatch = (action: Action) => {
@@ -537,6 +539,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   useEffect(() => {
     if (expenseViewMode === "edit") {
       setIsExpenseChartOpen(false);
+      setShowAllExpenses(false);
     }
   }, [expenseViewMode]);
 
@@ -619,6 +622,11 @@ export default function BudgetApp({ username }: BudgetAppProps) {
     () => state.expenses.map((expense, index) => ({ expense, index })),
     [state.expenses]
   );
+  const hasMoreExpensesThanPreview = sortedExpenses.length > EXPENSES_PREVIEW_COUNT;
+  const visibleExpenses =
+    showAllExpenses || !hasMoreExpensesThanPreview
+      ? sortedExpenses
+      : sortedExpenses.slice(0, EXPENSES_PREVIEW_COUNT);
   const expenseChart = useMemo(() => {
     const slices = state.expenses
       .map((expense, index) => ({
@@ -726,6 +734,12 @@ export default function BudgetApp({ username }: BudgetAppProps) {
     state.investments.rrsp,
     state.investments.tfsa
   ]);
+
+  useEffect(() => {
+    if (!hasMoreExpensesThanPreview && showAllExpenses) {
+      setShowAllExpenses(false);
+    }
+  }, [hasMoreExpensesThanPreview, showAllExpenses]);
 
   const logout = async () => {
     setIsLoggingOut(true);
@@ -1080,7 +1094,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                 </p>
                 <div className="overflow-hidden rounded-xl border border-forest-100 bg-paper/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]">
                   <ul className="divide-y divide-forest-100/90">
-                    {sortedExpenses.map(({ expense, index }, expenseIndex) => (
+                    {visibleExpenses.map(({ expense, index }, expenseIndex) => (
                       <li
                         key={`expense-list-${index}`}
                         className="flex items-center justify-between gap-4 px-4 py-3"
@@ -1102,6 +1116,15 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                     ))}
                   </ul>
                 </div>
+                {hasMoreExpensesThanPreview ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllExpenses((current) => !current)}
+                    className="btn-secondary w-full px-3 py-2 text-sm font-medium"
+                  >
+                    {showAllExpenses ? "View less" : "View more"}
+                  </button>
+                ) : null}
               </div>
             )}
             <div className="rounded-xl border border-forest-200/80 bg-paper/55 p-4">
