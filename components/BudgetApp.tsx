@@ -1104,6 +1104,14 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                 </div>
               </div>
             )}
+            <div className="rounded-xl border border-forest-200/80 bg-paper/55 p-4">
+              <p className="caps-label text-xs font-semibold uppercase text-forest-600">
+                Total Expenses (Monthly Equivalent)
+              </p>
+              <p className="tabular-nums mt-2 text-2xl font-semibold text-forest-700">
+                {cad.format(totals.totalExpenses)}
+              </p>
+            </div>
           </section>
 
           <section className="card space-y-4 p-6">
@@ -1306,6 +1314,14 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                 </div>
               </div>
             )}
+            <div className="rounded-xl border border-forest-200/80 bg-paper/55 p-4">
+              <p className="caps-label text-xs font-semibold uppercase text-forest-600">
+                Total Investments (Monthly Equivalent)
+              </p>
+              <p className="tabular-nums mt-2 text-2xl font-semibold text-forest-700">
+                {cad.format(totals.totalInvestments)}
+              </p>
+            </div>
           </section>
         </div>
 
