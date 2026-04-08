@@ -1,5 +1,5 @@
 FROM node:25-alpine AS base
-RUN npm install -g npm@11.10.0
+RUN npm install -g npm@11.12.1
 
 FROM base AS deps
 WORKDIR /app
