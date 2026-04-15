@@ -986,10 +986,10 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           </aside>
         </div>
 
-        <section className="card space-y-4 p-6 self-start">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold">Expenses</h2>
-              <div className="flex flex-wrap items-center gap-2">
+        <section className="card space-y-4 p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold">Expenses</h2>
+            <div className="flex flex-wrap items-center gap-2">
                 {expenseViewMode === "list" ? (
                   <button
                     type="button"
@@ -1041,60 +1041,79 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                     "Edit"
                   )}
                 </button>
-              </div>
             </div>
+          </div>
 
-            {expenseViewMode === "edit" ? (
-              <div className="space-y-4">
-                {editableExpenses.map(({ expense, index }) => (
-                  <article
-                    key={`expense-${index}`}
-                    className="rounded-xl border border-forest-100 bg-paper/70 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]"
-                  >
-                    <div className="mb-2 flex items-center gap-3">
-                      <input
-                        type="text"
-                        value={expense.name}
-                        onChange={(event) =>
-                          safeDispatch({
-                            type: "set-expense-name",
-                            index,
-                            name: event.target.value
-                          })
-                        }
-                        placeholder="Category"
-                        className="input min-w-0 flex-1"
-                      />
-                      <FrequencySelect
-                        id={`expense-frequency-${index}`}
-                        value={expense.frequency}
-                        showLabel={false}
-                        compact
-                        onChange={(frequency) =>
-                          safeDispatch({
-                            type: "set-expense-frequency",
-                            index,
-                            frequency
-                          })
-                        }
-                      />
-                      <button
-                        type="button"
-                        onClick={() => safeDispatch({ type: "remove-expense", index })}
-                        disabled={state.expenses.length <= 1}
-                        aria-label="Delete expense"
-                        title="Delete expense"
-                        className="btn-secondary ml-auto h-10 w-10 px-0 py-0 leading-none disabled:opacity-40"
-                      >
-                        <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
-                          delete
-                        </span>
-                      </button>
-                    </div>
+          {expenseViewMode === "edit" ? (
+            <div className="space-y-4">
+              {editableExpenses.map(({ expense, index }) => (
+                <article
+                  key={`expense-${index}`}
+                  className="rounded-xl border border-forest-100 bg-paper/70 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]"
+                >
+                  <div className="mb-2 flex items-center gap-3">
+                    <input
+                      type="text"
+                      value={expense.name}
+                      onChange={(event) =>
+                        safeDispatch({
+                          type: "set-expense-name",
+                          index,
+                          name: event.target.value
+                        })
+                      }
+                      placeholder="Category"
+                      className="input min-w-0 flex-1"
+                    />
+                    <FrequencySelect
+                      id={`expense-frequency-${index}`}
+                      value={expense.frequency}
+                      showLabel={false}
+                      compact
+                      onChange={(frequency) =>
+                        safeDispatch({
+                          type: "set-expense-frequency",
+                          index,
+                          frequency
+                        })
+                      }
+                    />
+                    <button
+                      type="button"
+                      onClick={() => safeDispatch({ type: "remove-expense", index })}
+                      disabled={state.expenses.length <= 1}
+                      aria-label="Delete expense"
+                      title="Delete expense"
+                      className="btn-secondary ml-auto h-10 w-10 px-0 py-0 leading-none disabled:opacity-40"
+                    >
+                      <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                        delete
+                      </span>
+                    </button>
+                  </div>
 
-                    <div className="grid gap-3 md:grid-cols-[1fr_140px]">
+                  <div className="grid gap-3 md:grid-cols-[1fr_140px]">
+                    <input
+                      type="range"
+                      min={0}
+                      max={MAX_EXPENSE}
+                      step={1}
+                      value={expense.amount}
+                      onChange={(event) =>
+                        safeDispatch({
+                          type: "set-expense-amount",
+                          index,
+                          amount: toNumber(event.target.value)
+                        })
+                      }
+                      className="w-full accent-forest-700"
+                    />
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
+                        $
+                      </span>
                       <input
-                        type="range"
+                        type="number"
                         min={0}
                         max={MAX_EXPENSE}
                         step={1}
@@ -1106,291 +1125,268 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                             amount: toNumber(event.target.value)
                           })
                         }
-                        className="w-full accent-forest-700"
+                        onFocus={selectInputValueOnFocus}
+                        className="input tabular-nums pl-7 pr-3 text-right"
                       />
-                      <div className="relative">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
-                          $
-                        </span>
-                        <input
-                          type="number"
-                          min={0}
-                          max={MAX_EXPENSE}
-                          step={1}
-                          value={expense.amount}
-                          onChange={(event) =>
-                            safeDispatch({
-                              type: "set-expense-amount",
-                              index,
-                              amount: toNumber(event.target.value)
-                            })
-                          }
-                          onFocus={selectInputValueOnFocus}
-                          className="input tabular-nums pl-7 pr-3 text-right"
-                        />
-                      </div>
                     </div>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-forest-700/80">
-                  Read-only summary. Press Edit to make changes.
-                </p>
-                <div className="overflow-hidden rounded-xl border border-forest-100 bg-paper/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]">
-                  <ul className="divide-y divide-forest-100/90">
-                    {visibleExpenses.map(({ expense, index }, expenseIndex) => (
-                      <li
-                        key={`expense-list-${index}`}
-                        className="flex items-center justify-between gap-4 px-4 py-3"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-forest-900">
-                            {expense.name.trim().length > 0
-                              ? expense.name
-                              : `Expense ${expenseIndex + 1}`}
-                          </p>
-                          <p className="text-xs text-forest-700/75">
-                            {expense.frequency === "bi-weekly" ? "Bi-weekly" : "Monthly"}
-                          </p>
-                        </div>
-                        <p className="tabular-nums text-sm font-semibold text-forest-900">
-                          {cad.format(expense.amount)}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                {hasMoreExpensesThanPreview ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowAllExpenses((current) => !current)}
-                    className="btn-secondary w-full px-3 py-2 text-sm font-medium"
-                  >
-                    {showAllExpenses ? "View less" : "View more"}
-                  </button>
-                ) : null}
-              </div>
-            )}
-            <div className="rounded-xl border border-forest-200/80 bg-paper/55 p-4">
-              <p className="caps-label text-xs font-semibold uppercase text-forest-600">
-                Total Expenses (Monthly Equivalent)
-              </p>
-              <p className="tabular-nums mt-2 text-2xl font-semibold text-forest-700">
-                {cad.format(totals.totalExpenses)}
-              </p>
+                  </div>
+                </article>
+              ))}
             </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-forest-700/80">
+                Read-only summary. Press Edit to make changes.
+              </p>
+              <div className="overflow-hidden rounded-xl border border-forest-100 bg-paper/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]">
+                <ul className="divide-y divide-forest-100/90">
+                  {visibleExpenses.map(({ expense, index }, expenseIndex) => (
+                    <li
+                      key={`expense-list-${index}`}
+                      className="flex items-center justify-between gap-4 px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-forest-900">
+                          {expense.name.trim().length > 0
+                            ? expense.name
+                            : `Expense ${expenseIndex + 1}`}
+                        </p>
+                        <p className="text-xs text-forest-700/75">
+                          {expense.frequency === "bi-weekly" ? "Bi-weekly" : "Monthly"}
+                        </p>
+                      </div>
+                      <p className="tabular-nums text-sm font-semibold text-forest-900">
+                        {cad.format(expense.amount)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {hasMoreExpensesThanPreview ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAllExpenses((current) => !current)}
+                  className="btn-secondary w-full px-3 py-2 text-sm font-medium"
+                >
+                  {showAllExpenses ? "View less" : "View more"}
+                </button>
+              ) : null}
+            </div>
+          )}
+          <div className="rounded-xl border border-forest-200/80 bg-paper/55 p-4">
+            <p className="caps-label text-xs font-semibold uppercase text-forest-600">
+              Total Expenses (Monthly Equivalent)
+            </p>
+            <p className="tabular-nums mt-2 text-2xl font-semibold text-forest-700">
+              {cad.format(totals.totalExpenses)}
+            </p>
+          </div>
         </section>
 
-        <section className="card space-y-4 p-6 self-start">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold">Investments</h2>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsInvestmentHelpOpen(true)}
-                  aria-label="How investment limits are calculated"
-                  title="How investment limits are calculated"
-                  className="btn-secondary h-9 w-9 px-0 py-0 leading-none"
-                >
+        <section className="card space-y-4 p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold">Investments</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsInvestmentHelpOpen(true)}
+                aria-label="How investment limits are calculated"
+                title="How investment limits are calculated"
+                className="btn-secondary h-9 w-9 px-0 py-0 leading-none"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                  read_more
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setInvestmentViewMode((current) => (current === "edit" ? "list" : "edit"))
+                }
+                aria-label={
+                  investmentViewMode === "edit" ? "Confirm investment edits" : "Edit investments"
+                }
+                title={
+                  investmentViewMode === "edit" ? "Confirm investment edits" : "Edit investments"
+                }
+                className="btn-primary flex h-10 w-14 items-center justify-center px-0 py-0 text-sm font-medium"
+              >
+                {investmentViewMode === "edit" ? (
                   <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
-                    read_more
+                    check
                   </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setInvestmentViewMode((current) => (current === "edit" ? "list" : "edit"))
-                  }
-                  aria-label={
-                    investmentViewMode === "edit"
-                      ? "Confirm investment edits"
-                      : "Edit investments"
-                  }
-                  title={
-                    investmentViewMode === "edit"
-                      ? "Confirm investment edits"
-                      : "Edit investments"
-                  }
-                  className="btn-primary flex h-10 w-14 items-center justify-center px-0 py-0 text-sm font-medium"
-                >
-                  {investmentViewMode === "edit" ? (
-                    <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
-                      check
-                    </span>
-                  ) : (
-                    "Edit"
-                  )}
-                </button>
+                ) : (
+                  "Edit"
+                )}
+              </button>
+            </div>
+          </div>
+          {investmentViewMode === "edit" ? (
+            <div className="space-y-4">
+              <SliderMoneyField
+                id="tfsa"
+                label="TFSA"
+                value={state.investments.tfsa}
+                max={MAX_INVESTMENT}
+                onChange={(amount) =>
+                  safeDispatch({ type: "set-investment", field: "tfsa", amount })
+                }
+                labelAccessory={
+                  <FrequencySelect
+                    id="investment-frequency-tfsa"
+                    value={state.frequencies.investments.tfsa}
+                    showLabel={false}
+                    onChange={(frequency) =>
+                      safeDispatch({
+                        type: "set-investment-frequency",
+                        field: "tfsa",
+                        frequency
+                      })
+                    }
+                  />
+                }
+              />
+              <SliderMoneyField
+                id="fhsa"
+                label="FHSA"
+                value={state.investments.fhsa}
+                max={MAX_INVESTMENT}
+                onChange={(amount) =>
+                  safeDispatch({ type: "set-investment", field: "fhsa", amount })
+                }
+                labelAccessory={
+                  <FrequencySelect
+                    id="investment-frequency-fhsa"
+                    value={state.frequencies.investments.fhsa}
+                    showLabel={false}
+                    onChange={(frequency) =>
+                      safeDispatch({
+                        type: "set-investment-frequency",
+                        field: "fhsa",
+                        frequency
+                      })
+                    }
+                  />
+                }
+              />
+              <SliderMoneyField
+                id="rrsp"
+                label="RRSP"
+                value={state.investments.rrsp}
+                max={MAX_INVESTMENT}
+                onChange={(amount) =>
+                  safeDispatch({ type: "set-investment", field: "rrsp", amount })
+                }
+                labelAccessory={
+                  <FrequencySelect
+                    id="investment-frequency-rrsp"
+                    value={state.frequencies.investments.rrsp}
+                    showLabel={false}
+                    onChange={(frequency) =>
+                      safeDispatch({
+                        type: "set-investment-frequency",
+                        field: "rrsp",
+                        frequency
+                      })
+                    }
+                  />
+                }
+              />
+              <SliderMoneyField
+                id="emergency-fund"
+                label="Emergency Fund"
+                value={state.investments.emergencyFund}
+                max={MAX_INVESTMENT}
+                onChange={(amount) =>
+                  safeDispatch({ type: "set-investment", field: "emergencyFund", amount })
+                }
+                labelAccessory={
+                  <FrequencySelect
+                    id="investment-frequency-emergency-fund"
+                    value={state.frequencies.investments.emergencyFund}
+                    showLabel={false}
+                    onChange={(frequency) =>
+                      safeDispatch({
+                        type: "set-investment-frequency",
+                        field: "emergencyFund",
+                        frequency
+                      })
+                    }
+                  />
+                }
+              />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-forest-700/80">
+                Read-only summary. Press Edit to make changes.
+              </p>
+              <div className="overflow-hidden rounded-xl border border-forest-100 bg-paper/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]">
+                <ul className="divide-y divide-forest-100/90">
+                  <li className="flex items-center justify-between gap-4 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-forest-900">TFSA</p>
+                      <p className="text-xs text-forest-700/75">
+                        {state.frequencies.investments.tfsa === "bi-weekly"
+                          ? "Bi-weekly"
+                          : "Monthly"}
+                      </p>
+                    </div>
+                    <p className="tabular-nums text-sm font-semibold text-forest-900">
+                      {cad.format(state.investments.tfsa)}
+                    </p>
+                  </li>
+                  <li className="flex items-center justify-between gap-4 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-forest-900">FHSA</p>
+                      <p className="text-xs text-forest-700/75">
+                        {state.frequencies.investments.fhsa === "bi-weekly"
+                          ? "Bi-weekly"
+                          : "Monthly"}
+                      </p>
+                    </div>
+                    <p className="tabular-nums text-sm font-semibold text-forest-900">
+                      {cad.format(state.investments.fhsa)}
+                    </p>
+                  </li>
+                  <li className="flex items-center justify-between gap-4 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-forest-900">RRSP</p>
+                      <p className="text-xs text-forest-700/75">
+                        {state.frequencies.investments.rrsp === "bi-weekly"
+                          ? "Bi-weekly"
+                          : "Monthly"}
+                      </p>
+                    </div>
+                    <p className="tabular-nums text-sm font-semibold text-forest-900">
+                      {cad.format(state.investments.rrsp)}
+                    </p>
+                  </li>
+                  <li className="flex items-center justify-between gap-4 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-forest-900">Emergency fund</p>
+                      <p className="text-xs text-forest-700/75">
+                        {state.frequencies.investments.emergencyFund === "bi-weekly"
+                          ? "Bi-weekly"
+                          : "Monthly"}
+                      </p>
+                    </div>
+                    <p className="tabular-nums text-sm font-semibold text-forest-900">
+                      {cad.format(state.investments.emergencyFund)}
+                    </p>
+                  </li>
+                </ul>
               </div>
             </div>
-            {investmentViewMode === "edit" ? (
-              <div className="space-y-4">
-                <SliderMoneyField
-                  id="tfsa"
-                  label="TFSA"
-                  value={state.investments.tfsa}
-                  max={MAX_INVESTMENT}
-                  onChange={(amount) =>
-                    safeDispatch({ type: "set-investment", field: "tfsa", amount })
-                  }
-                  labelAccessory={
-                    <FrequencySelect
-                      id="investment-frequency-tfsa"
-                      value={state.frequencies.investments.tfsa}
-                      showLabel={false}
-                      onChange={(frequency) =>
-                        safeDispatch({
-                          type: "set-investment-frequency",
-                          field: "tfsa",
-                          frequency
-                        })
-                      }
-                    />
-                  }
-                />
-                <SliderMoneyField
-                  id="fhsa"
-                  label="FHSA"
-                  value={state.investments.fhsa}
-                  max={MAX_INVESTMENT}
-                  onChange={(amount) =>
-                    safeDispatch({ type: "set-investment", field: "fhsa", amount })
-                  }
-                  labelAccessory={
-                    <FrequencySelect
-                      id="investment-frequency-fhsa"
-                      value={state.frequencies.investments.fhsa}
-                      showLabel={false}
-                      onChange={(frequency) =>
-                        safeDispatch({
-                          type: "set-investment-frequency",
-                          field: "fhsa",
-                          frequency
-                        })
-                      }
-                    />
-                  }
-                />
-                <SliderMoneyField
-                  id="rrsp"
-                  label="RRSP"
-                  value={state.investments.rrsp}
-                  max={MAX_INVESTMENT}
-                  onChange={(amount) =>
-                    safeDispatch({ type: "set-investment", field: "rrsp", amount })
-                  }
-                  labelAccessory={
-                    <FrequencySelect
-                      id="investment-frequency-rrsp"
-                      value={state.frequencies.investments.rrsp}
-                      showLabel={false}
-                      onChange={(frequency) =>
-                        safeDispatch({
-                          type: "set-investment-frequency",
-                          field: "rrsp",
-                          frequency
-                        })
-                      }
-                    />
-                  }
-                />
-                <SliderMoneyField
-                  id="emergency-fund"
-                  label="Emergency Fund"
-                  value={state.investments.emergencyFund}
-                  max={MAX_INVESTMENT}
-                  onChange={(amount) =>
-                    safeDispatch({ type: "set-investment", field: "emergencyFund", amount })
-                  }
-                  labelAccessory={
-                    <FrequencySelect
-                      id="investment-frequency-emergency-fund"
-                      value={state.frequencies.investments.emergencyFund}
-                      showLabel={false}
-                      onChange={(frequency) =>
-                        safeDispatch({
-                          type: "set-investment-frequency",
-                          field: "emergencyFund",
-                          frequency
-                        })
-                      }
-                    />
-                  }
-                />
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-forest-700/80">
-                  Read-only summary. Press Edit to make changes.
-                </p>
-                <div className="overflow-hidden rounded-xl border border-forest-100 bg-paper/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]">
-                  <ul className="divide-y divide-forest-100/90">
-                    <li className="flex items-center justify-between gap-4 px-4 py-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-forest-900">TFSA</p>
-                        <p className="text-xs text-forest-700/75">
-                          {state.frequencies.investments.tfsa === "bi-weekly"
-                            ? "Bi-weekly"
-                            : "Monthly"}
-                        </p>
-                      </div>
-                      <p className="tabular-nums text-sm font-semibold text-forest-900">
-                        {cad.format(state.investments.tfsa)}
-                      </p>
-                    </li>
-                    <li className="flex items-center justify-between gap-4 px-4 py-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-forest-900">FHSA</p>
-                        <p className="text-xs text-forest-700/75">
-                          {state.frequencies.investments.fhsa === "bi-weekly"
-                            ? "Bi-weekly"
-                            : "Monthly"}
-                        </p>
-                      </div>
-                      <p className="tabular-nums text-sm font-semibold text-forest-900">
-                        {cad.format(state.investments.fhsa)}
-                      </p>
-                    </li>
-                    <li className="flex items-center justify-between gap-4 px-4 py-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-forest-900">RRSP</p>
-                        <p className="text-xs text-forest-700/75">
-                          {state.frequencies.investments.rrsp === "bi-weekly"
-                            ? "Bi-weekly"
-                            : "Monthly"}
-                        </p>
-                      </div>
-                      <p className="tabular-nums text-sm font-semibold text-forest-900">
-                        {cad.format(state.investments.rrsp)}
-                      </p>
-                    </li>
-                    <li className="flex items-center justify-between gap-4 px-4 py-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-forest-900">Emergency fund</p>
-                        <p className="text-xs text-forest-700/75">
-                          {state.frequencies.investments.emergencyFund === "bi-weekly"
-                            ? "Bi-weekly"
-                            : "Monthly"}
-                        </p>
-                      </div>
-                      <p className="tabular-nums text-sm font-semibold text-forest-900">
-                        {cad.format(state.investments.emergencyFund)}
-                      </p>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            )}
-            <div className="rounded-xl border border-forest-200/80 bg-paper/55 p-4">
-              <p className="caps-label text-xs font-semibold uppercase text-forest-600">
-                Total Investments (Monthly Equivalent)
-              </p>
-              <p className="tabular-nums mt-2 text-2xl font-semibold text-forest-700">
-                {cad.format(totals.totalInvestments)}
-              </p>
-            </div>
+          )}
+          <div className="rounded-xl border border-forest-200/80 bg-paper/55 p-4">
+            <p className="caps-label text-xs font-semibold uppercase text-forest-600">
+              Total Investments (Monthly Equivalent)
+            </p>
+            <p className="tabular-nums mt-2 text-2xl font-semibold text-forest-700">
+              {cad.format(totals.totalInvestments)}
+            </p>
+          </div>
         </section>
       </div>
 
