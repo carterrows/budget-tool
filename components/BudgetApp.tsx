@@ -756,7 +756,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
 
   if (loading) {
     return (
-      <section className="card mx-auto max-w-5xl p-8">
+      <section className="card w-full p-8">
         <p className="text-sm text-forest-700/80">Loading your budget...</p>
       </section>
     );
@@ -764,14 +764,14 @@ export default function BudgetApp({ username }: BudgetAppProps) {
 
   if (loadError) {
     return (
-      <section className="mx-auto max-w-5xl rounded-2xl border border-rose-200 bg-white p-8 shadow-card">
+      <section className="w-full rounded-2xl border border-rose-200 bg-white p-8 shadow-card">
         <p className="text-sm text-rose-700">{loadError}</p>
       </section>
     );
   }
 
   return (
-    <section className="mx-auto max-w-5xl space-y-6">
+    <section className="w-full space-y-6">
       <header className="card flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="caps-label text-xs font-semibold uppercase text-forest-600">Budget Tool</p>
@@ -801,9 +801,9 @@ export default function BudgetApp({ username }: BudgetAppProps) {
         </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+      <div className="grid items-start gap-6 xl:grid-cols-3">
         <div className="space-y-6">
-          <section className="card space-y-4 p-6">
+          <section className="card space-y-4 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Income</h2>
               <div className="flex flex-wrap items-center gap-2">
@@ -933,7 +933,60 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             </div>
           </section>
 
-          <section className="card space-y-4 p-6">
+          <aside className="card border-forest-300/90 p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold">Summary</h2>
+                <p className="mt-1 text-xs text-forest-700/75">
+                  All totals shown as monthly equivalents.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSummaryHelpOpen(true)}
+                aria-label="Open expanded summary details"
+                title="Open expanded summary details"
+                className="btn-secondary h-9 w-9 shrink-0 px-0 py-0 leading-none"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                  read_more
+                </span>
+              </button>
+            </div>
+            <div className="mt-4 space-y-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-forest-700/90">Monthly net income</span>
+                <span className="tabular-nums font-semibold text-forest-900">
+                  {cad.format(totals.monthlyIncome)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-forest-700/90">Total expenses</span>
+                <span className="tabular-nums font-semibold text-forest-900">
+                  {cad.format(totals.totalExpenses)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-forest-700/90">Total investments</span>
+                <span className="tabular-nums font-semibold text-forest-900">
+                  {cad.format(totals.totalInvestments)}
+                </span>
+              </div>
+              <div className="rounded-xl border border-forest-300/60 bg-gradient-to-br from-forest-50 via-paper to-white p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+                <p className="caps-label text-sm font-semibold uppercase text-forest-600">Leftover Cash</p>
+                <p
+                  className={`tabular-nums mt-2 text-4xl font-semibold leading-tight ${
+                    totals.leftover < 0 ? "text-rose-700" : "text-forest-700"
+                  }`}
+                >
+                  {cad.format(totals.leftover)}
+                </p>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <section className="card space-y-4 p-6 self-start">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Expenses</h2>
               <div className="flex flex-wrap items-center gap-2">
@@ -1128,9 +1181,9 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                 {cad.format(totals.totalExpenses)}
               </p>
             </div>
-          </section>
+        </section>
 
-          <section className="card space-y-4 p-6">
+        <section className="card space-y-4 p-6 self-start">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Investments</h2>
               <div className="flex flex-wrap items-center gap-2">
@@ -1338,60 +1391,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                 {cad.format(totals.totalInvestments)}
               </p>
             </div>
-          </section>
-        </div>
-
-        <aside className="card border-forest-300/90 p-6 lg:sticky lg:top-8 lg:h-fit">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-semibold">Summary</h2>
-              <p className="mt-1 text-xs text-forest-700/75">
-                All totals shown as monthly equivalents.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsSummaryHelpOpen(true)}
-              aria-label="Open expanded summary details"
-              title="Open expanded summary details"
-              className="btn-secondary h-9 w-9 shrink-0 px-0 py-0 leading-none"
-            >
-              <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
-                read_more
-              </span>
-            </button>
-          </div>
-          <div className="mt-4 space-y-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-forest-700/90">Monthly net income</span>
-              <span className="tabular-nums font-semibold text-forest-900">
-                {cad.format(totals.monthlyIncome)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-forest-700/90">Total expenses</span>
-              <span className="tabular-nums font-semibold text-forest-900">
-                {cad.format(totals.totalExpenses)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-forest-700/90">Total investments</span>
-              <span className="tabular-nums font-semibold text-forest-900">
-                {cad.format(totals.totalInvestments)}
-              </span>
-            </div>
-            <div className="rounded-xl border border-forest-300/60 bg-gradient-to-br from-forest-50 via-paper to-white p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-              <p className="caps-label text-sm font-semibold uppercase text-forest-600">Leftover Cash</p>
-              <p
-                className={`tabular-nums mt-2 text-4xl font-semibold leading-tight ${
-                  totals.leftover < 0 ? "text-rose-700" : "text-forest-700"
-                }`}
-              >
-                {cad.format(totals.leftover)}
-              </p>
-            </div>
-          </div>
-        </aside>
+        </section>
       </div>
 
       <ModalOverlay

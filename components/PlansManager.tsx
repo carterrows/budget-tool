@@ -579,7 +579,7 @@ export default function PlansManager({ username }: PlansManagerProps) {
 
   if (loading) {
     return (
-      <section className="card mx-auto max-w-4xl p-8">
+      <section className="card w-full p-8">
         <p className="text-sm text-forest-700/80">Loading your plans...</p>
       </section>
     );
@@ -587,7 +587,7 @@ export default function PlansManager({ username }: PlansManagerProps) {
 
   if (error && plans.length === 0) {
     return (
-      <section className="mx-auto max-w-4xl rounded-2xl border border-rose-200 bg-white p-8 shadow-card">
+      <section className="w-full rounded-2xl border border-rose-200 bg-white p-8 shadow-card">
         <p className="text-sm text-rose-700">{error}</p>
       </section>
     );
@@ -595,7 +595,7 @@ export default function PlansManager({ username }: PlansManagerProps) {
 
   return (
     <>
-      <section className="mx-auto max-w-4xl space-y-6">
+      <section className="w-full space-y-6">
         <header className="card flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="caps-label text-xs font-semibold uppercase text-forest-600">Budget Tool</p>
