@@ -1,5 +1,4 @@
-FROM node:25-alpine AS base
-RUN npm install -g npm@11.12.1
+FROM node:24-alpine AS base
 
 FROM base AS deps
 WORKDIR /app
@@ -15,7 +14,7 @@ COPY . .
 RUN npm run build
 RUN npm prune --omit=dev
 
-FROM node:25-alpine AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=4050
