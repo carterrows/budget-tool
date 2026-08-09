@@ -21,6 +21,13 @@
   --color-action: 16 31 23;
   --color-action-hover: 28 59 41;
   --color-action-ink: 252 255 252;
+  --color-surface-strong: rgba(255, 248, 239, 0.92);
+  --color-surface-alt: rgba(235, 225, 211, 0.78);
+  --color-border: rgba(84, 61, 42, 0.15);
+  --color-border-strong: rgba(84, 61, 42, 0.24);
+  --color-text: #231814;
+  --color-text-muted: #6b5a50;
+  --shadow-control: 0 8px 22px rgba(52, 29, 16, 0.08);
   --shadow-card: 0 1px 1px rgba(14, 30, 21, 0.04), 0 12px 36px rgba(14, 30, 21, 0.07);
 }
 
@@ -42,6 +49,13 @@
   --color-action: 75 226 137;
   --color-action-hover: 98 239 157;
   --color-action-ink: 8 27 16;
+  --color-surface-strong: rgba(37, 33, 29, 0.96);
+  --color-surface-alt: rgba(53, 46, 40, 0.88);
+  --color-border: rgba(240, 225, 210, 0.13);
+  --color-border-strong: rgba(240, 225, 210, 0.23);
+  --color-text: #f3ebe3;
+  --color-text-muted: #b9aa9d;
+  --shadow-control: 0 8px 22px rgba(0, 0, 0, 0.2);
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04), 0 18px 56px rgba(0, 0, 0, 0.3);
 }
 
@@ -122,7 +136,6 @@
 @layer components {
   .card {
     @apply rounded-[24px] border border-forest-200/75 bg-white/95 shadow-card;
-    backdrop-filter: blur(18px);
   }
 
   .btn,
@@ -220,44 +233,25 @@
 
   .section-card {
     @apply card space-y-5 p-5 md:p-6;
-    position: relative;
-    overflow: hidden;
     min-width: 0;
   }
 
-  .section-card::after {
-    content: "";
-    position: absolute;
-    top: -8rem;
-    right: -8rem;
-    z-index: 0;
-    width: 18rem;
-    height: 18rem;
-    border-radius: 999px;
-    background: rgb(var(--color-wealth-500) / 0.1);
-    filter: blur(20px);
-    pointer-events: none;
-  }
-
-  .section-card > * {
-    position: relative;
-    z-index: 1;
-  }
-
   .section-card-income {
-    background: linear-gradient(145deg, rgb(var(--color-surface)) 48%, rgb(var(--color-wealth-500) / 0.1));
+    background:
+      radial-gradient(circle at 105% -5%, rgb(var(--color-wealth-500) / 0.14), transparent 15rem),
+      linear-gradient(145deg, rgb(var(--color-surface)) 48%, rgb(var(--color-wealth-500) / 0.1));
   }
 
   .section-card-expenses {
-    background: linear-gradient(145deg, rgb(var(--color-surface)) 50%, rgb(244 63 94 / 0.06));
-  }
-
-  .section-card-expenses::after {
-    background: rgb(251 113 133 / 0.07);
+    background:
+      radial-gradient(circle at 105% -5%, rgb(251 113 133 / 0.1), transparent 15rem),
+      linear-gradient(145deg, rgb(var(--color-surface)) 50%, rgb(244 63 94 / 0.06));
   }
 
   .section-card-investments {
-    background: linear-gradient(145deg, rgb(var(--color-surface)) 46%, rgb(var(--color-wealth-400) / 0.11));
+    background:
+      radial-gradient(circle at 105% -5%, rgb(var(--color-wealth-400) / 0.15), transparent 15rem),
+      linear-gradient(145deg, rgb(var(--color-surface)) 46%, rgb(var(--color-wealth-400) / 0.11));
   }
 
   .section-total {
@@ -278,22 +272,6 @@
   .section-card-investments .section-total {
     border-color: rgb(var(--color-wealth-400) / 0.34);
     background: linear-gradient(135deg, rgb(var(--color-wealth-400) / 0.13), rgb(var(--color-paper) / 0.82));
-  }
-
-  .theme-toggle {
-    @apply inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full border border-forest-200 bg-white text-forest-800 shadow-sm transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wealth-500 focus-visible:ring-offset-2 focus-visible:ring-offset-paper;
-  }
-
-  .theme-toggle:hover {
-    @apply border-forest-300 bg-forest-50 text-forest-900;
-    transform: translateY(-1px) rotate(8deg);
-  }
-
-  .theme-toggle-icon {
-    display: none;
-    font-family: var(--font-serif);
-    font-size: 1.25rem;
-    line-height: 1;
   }
 
   .login-shell {
@@ -353,11 +331,6 @@
   color: rgb(251 113 133);
 }
 
-:root[data-theme="dark"] .theme-toggle-sun,
-:root[data-theme="light"] .theme-toggle-moon {
-  display: inline-block;
-}
-
 :root[data-theme="dark"] .text-amber-700 {
   color: rgb(251 191 36);
 }
@@ -366,6 +339,12 @@
   .login-shell {
     min-height: 0;
     border-radius: 1.5rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .input {
+    font-size: 16px;
   }
 }
 
