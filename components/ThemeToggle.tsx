@@ -54,7 +54,9 @@ export default function ThemeToggle() {
       title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface-strong)] text-lg leading-none text-[var(--color-text-muted)] shadow-[var(--shadow-control)] transition-colors hover:border-[var(--color-border-strong)] hover:bg-[var(--color-surface-alt)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/40"
     >
-      <span aria-hidden="true">{theme === "dark" ? "☀" : "☾"}</span>
+      <span aria-hidden="true" className="material-symbols-outlined text-[16px]">
+        {theme === "dark" ? "light_mode" : "dark_mode"}
+      </span>
     </button>
   );
 }
