@@ -233,15 +233,6 @@
     min-width: 0;
   }
 
-  .section-card::before {
-    content: "";
-    position: absolute;
-    inset: 0 0 auto;
-    z-index: 0;
-    height: 3px;
-    background: linear-gradient(90deg, rgb(var(--color-wealth-500)), transparent 72%);
-  }
-
   .section-card::after {
     content: "";
     position: absolute;
@@ -269,20 +260,12 @@
     background: linear-gradient(145deg, rgb(var(--color-surface)) 50%, rgb(244 63 94 / 0.06));
   }
 
-  .section-card-expenses::before {
-    background: linear-gradient(90deg, rgb(251 113 133 / 0.85), rgb(var(--color-wealth-500) / 0.4), transparent 82%);
-  }
-
   .section-card-expenses::after {
     background: rgb(251 113 133 / 0.07);
   }
 
   .section-card-investments {
     background: linear-gradient(145deg, rgb(var(--color-surface)) 46%, rgb(var(--color-wealth-400) / 0.11));
-  }
-
-  .section-card-investments::before {
-    background: linear-gradient(90deg, rgb(var(--color-wealth-400)), rgb(214 180 75 / 0.65), transparent 82%);
   }
 
   .section-total {
