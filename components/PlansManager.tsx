@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
+import ThemeToggle from "@/components/ThemeToggle";
 import { MAX_PLANS_PER_USER } from "@/lib/plan-config";
 import type { BudgetState, InvestmentState } from "@/lib/types";
 
@@ -43,7 +44,7 @@ type PlansManagerProps = {
 };
 
 const MODAL_OVERLAY_CLASS =
-  "fixed inset-0 z-50 flex h-[100dvh] w-screen items-center justify-center overflow-y-auto overscroll-contain bg-forest-900/30 px-3 py-4 backdrop-blur-md sm:px-4 sm:py-6 md:px-6 md:py-8";
+  "fixed inset-0 z-50 flex h-[100dvh] w-screen items-center justify-center overflow-y-auto overscroll-contain bg-black/60 px-3 py-4 backdrop-blur-md sm:px-4 sm:py-6 md:px-6 md:py-8";
 const MODAL_PANEL_CLASS =
   "card w-full max-w-3xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-5 sm:p-6 md:max-h-[calc(100dvh-4rem)] md:p-8";
 
@@ -177,7 +178,11 @@ export default function PlansManager({ username }: PlansManagerProps) {
   }, [router]);
 
   useEffect(() => {
-    void loadPlans();
+    const loadTimer = window.setTimeout(() => {
+      void loadPlans();
+    }, 0);
+
+    return () => window.clearTimeout(loadTimer);
   }, [loadPlans]);
 
   const setPlanStateLoading = (planId: number, loadingForPlan: boolean) => {
@@ -596,14 +601,17 @@ export default function PlansManager({ username }: PlansManagerProps) {
   return (
     <>
       <section className="mx-auto w-full max-w-5xl space-y-6">
-        <header className="card flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="caps-label text-xs font-semibold uppercase text-forest-600">Budget Tool</p>
-            <h1 className="text-3xl font-semibold tracking-[-0.02em]">Plans</h1>
-            <p className="text-sm text-forest-700/80">Signed in as {username}</p>
+        <header className="flex flex-col gap-4 px-1 py-1 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="app-mark" aria-hidden="true">B</span>
+            <div>
+              <p className="font-display text-lg font-semibold leading-none">Budget</p>
+              <p className="mt-1 text-xs text-forest-600">Signed in as {username}</p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <ThemeToggle />
             <button
               type="button"
               onClick={() => router.push("/budget")}
@@ -622,12 +630,27 @@ export default function PlansManager({ username }: PlansManagerProps) {
           </div>
         </header>
 
-        <section className="card p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold">Saved plans</h2>
-            <p className="text-sm text-forest-700/80">
+        <section className="dashboard-hero">
+          <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="eyebrow">Plan library</p>
+              <h1 className="mt-3 text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">Choose your next move.</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-forest-600">
+                Keep separate budgets for different goals, seasons, or versions of your future.
+              </p>
+            </div>
+            <p className="metric-tile shrink-0 text-sm text-forest-600">
               {plans.length} of {maxPlans} plans used
             </p>
+          </div>
+        </section>
+
+        <section className="section-card">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="eyebrow">Your plans</p>
+              <h2 className="mt-2 text-2xl font-semibold">Saved budgets</h2>
+            </div>
           </div>
 
           {isAtPlanLimit ? (
@@ -652,7 +675,7 @@ export default function PlansManager({ username }: PlansManagerProps) {
               return (
                 <li
                   key={plan.id}
-                  className="rounded-xl border border-forest-200/90 bg-paper/60 p-4"
+                  className={`rounded-2xl border p-5 transition ${isActive ? "border-wealth-500/60 bg-forest-50" : "border-forest-200/80 bg-paper/55 hover:border-forest-300"}`}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
