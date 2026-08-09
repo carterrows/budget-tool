@@ -3,7 +3,10 @@ import { sourceSans, sourceSerif } from "./fonts";
 import "./globals.css";
 
 export const viewport: Viewport = {
-  themeColor: "#0f766e"
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f3f1e9" },
+    { media: "(prefers-color-scheme: dark)", color: "#0d100e" }
+  ]
 };
 
 export const metadata: Metadata = {
@@ -28,8 +31,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var p=localStorage.getItem('budget-theme')||'system';var t=p==='light'||p==='dark'?p:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t;}catch(e){document.documentElement.dataset.theme='dark';document.documentElement.style.colorScheme='dark';}})();`
+          }}
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}

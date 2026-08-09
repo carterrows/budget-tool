@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
+import ThemeToggle from "@/components/ThemeToggle";
 import {
   DEFAULT_STATE,
   MAX_BONUS_AMOUNT,
@@ -73,7 +74,7 @@ const TFSA_2026_LIMIT = 7000;
 const FHSA_2026_LIMIT = 8000;
 const RRSP_2026_CAP = 33810;
 const MODAL_OVERLAY_CLASS =
-  "fixed inset-0 z-50 flex h-[100dvh] w-screen items-center justify-center overflow-y-auto overscroll-contain bg-forest-900/30 px-3 py-4 backdrop-blur-md sm:px-4 sm:py-6 md:px-6 md:py-8";
+  "fixed inset-0 z-50 flex h-[100dvh] w-screen items-center justify-center overflow-y-auto overscroll-contain bg-black/60 px-3 py-4 backdrop-blur-md sm:px-4 sm:py-6 md:px-6 md:py-8";
 const MODAL_PANEL_CLASS =
   "card w-full max-w-3xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-5 sm:p-6 md:max-h-[calc(100dvh-4rem)] md:p-8";
 
@@ -771,18 +772,24 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   }
 
   return (
-    <section className="w-full space-y-6">
-      <header className="card flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="caps-label text-xs font-semibold uppercase text-forest-600">Budget Tool</p>
-          <h1 className="text-3xl font-semibold tracking-[-0.02em]">
-            {activePlan?.name ?? "Monthly Plan"}
-          </h1>
-          <p className="text-sm text-forest-700/80">Signed in as {username}</p>
+    <section className="w-full space-y-5 md:space-y-7">
+      <header className="flex flex-col gap-4 px-1 py-1 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <span className="app-mark" aria-hidden="true">B</span>
+          <div>
+            <p className="font-display text-lg font-semibold leading-none">Budget</p>
+            <p className="mt-1 text-xs text-forest-600">Personal finance, simplified</p>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <p className="tabular-nums text-sm text-forest-700/90">{statusLabel}</p>
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <ThemeToggle compact />
+          {statusLabel ? (
+            <p className="tabular-nums inline-flex items-center gap-2 px-2 text-xs font-semibold text-forest-600">
+              <span className={`h-1.5 w-1.5 rounded-full ${saveStatus === "error" ? "bg-rose-500" : "bg-wealth-500"}`} />
+              {statusLabel}
+            </p>
+          ) : null}
           <button
             type="button"
             onClick={() => router.push("/plans")}
@@ -801,11 +808,58 @@ export default function BudgetApp({ username }: BudgetAppProps) {
         </div>
       </header>
 
+      <section className="dashboard-hero">
+        <div className="relative z-10 flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="eyebrow">{activePlan?.name ?? "Monthly plan"}</p>
+              <span className="h-1 w-1 rounded-full bg-wealth-500" />
+              <p className="text-xs font-medium text-forest-600">Monthly snapshot</p>
+            </div>
+            <p className="mt-5 text-sm font-semibold text-forest-600">Available to allocate</p>
+            <h1 className={`tabular-nums mt-1 text-5xl font-medium tracking-[-0.055em] sm:text-6xl ${totals.leftover < 0 ? "text-rose-700" : "text-forest-900"}`}>
+              {cad.format(totals.leftover)}
+            </h1>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-forest-600">
+              {totals.leftover < 0
+                ? "Your monthly outflow is above your net income. Review a category below to rebalance."
+                : "What remains after monthly expenses and contributions to your investment goals."}
+            </p>
+          </div>
+
+          <div className="grid w-full gap-3 sm:grid-cols-3 xl:max-w-3xl">
+            <div className="metric-tile">
+              <p className="text-xs font-semibold text-forest-600">Net income</p>
+              <p className="tabular-nums mt-2 text-xl font-semibold text-forest-900">{cad.format(totals.monthlyIncome)}</p>
+            </div>
+            <div className="metric-tile">
+              <p className="text-xs font-semibold text-forest-600">Expenses</p>
+              <p className="tabular-nums mt-2 text-xl font-semibold text-forest-900">{cad.format(totals.totalExpenses)}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsSummaryHelpOpen(true)}
+              className="metric-tile text-left transition hover:-translate-y-0.5 hover:border-wealth-500/60"
+              aria-label="Open expanded monthly summary"
+            >
+              <p className="flex items-center justify-between text-xs font-semibold text-forest-600">
+                Investments
+                <span aria-hidden="true">↗</span>
+              </p>
+              <p className="tabular-nums mt-2 text-xl font-semibold text-forest-900">{cad.format(totals.totalInvestments)}</p>
+            </button>
+          </div>
+        </div>
+      </section>
+
       <div className="grid items-start gap-6 xl:grid-cols-3">
         <div className="space-y-6">
-          <section className="card space-y-4 p-5">
+          <section className="section-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold">Income</h2>
+              <div>
+                <p className="eyebrow">Cash in</p>
+                <h2 className="mt-2 text-2xl font-semibold">Income</h2>
+              </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
@@ -889,9 +943,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
               </>
             ) : (
               <div className="space-y-3">
-                <p className="text-sm text-forest-700/80">
-                  Read-only summary. Press Edit to make changes.
-                </p>
+                <p className="text-sm text-forest-600">Your annual earnings at a glance.</p>
                 <div className="overflow-hidden rounded-xl border border-forest-100 bg-paper/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]">
                   <ul className="divide-y divide-forest-100/90">
                     <li className="flex items-center justify-between gap-4 px-4 py-3">
@@ -933,62 +985,14 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             </div>
           </section>
 
-          <aside className="card border-forest-300/90 p-6">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-semibold">Summary</h2>
-                <p className="mt-1 text-xs text-forest-700/75">
-                  All totals shown as monthly equivalents.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsSummaryHelpOpen(true)}
-                aria-label="Open expanded summary details"
-                title="Open expanded summary details"
-                className="btn-secondary h-9 w-9 shrink-0 px-0 py-0 leading-none"
-              >
-                <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
-                  read_more
-                </span>
-              </button>
-            </div>
-            <div className="mt-4 space-y-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-forest-700/90">Monthly net income</span>
-                <span className="tabular-nums font-semibold text-forest-900">
-                  {cad.format(totals.monthlyIncome)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-forest-700/90">Total expenses</span>
-                <span className="tabular-nums font-semibold text-forest-900">
-                  {cad.format(totals.totalExpenses)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-forest-700/90">Total investments</span>
-                <span className="tabular-nums font-semibold text-forest-900">
-                  {cad.format(totals.totalInvestments)}
-                </span>
-              </div>
-              <div className="rounded-xl border border-forest-300/60 bg-gradient-to-br from-forest-50 via-paper to-white p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                <p className="caps-label text-sm font-semibold uppercase text-forest-600">Leftover Cash</p>
-                <p
-                  className={`tabular-nums mt-2 text-4xl font-semibold leading-tight ${
-                    totals.leftover < 0 ? "text-rose-700" : "text-forest-700"
-                  }`}
-                >
-                  {cad.format(totals.leftover)}
-                </p>
-              </div>
-            </div>
-          </aside>
         </div>
 
-        <section className="card space-y-4 p-6">
+        <section className="section-card">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold">Expenses</h2>
+            <div>
+              <p className="eyebrow">Cash out</p>
+              <h2 className="mt-2 text-2xl font-semibold">Expenses</h2>
+            </div>
             <div className="flex flex-wrap items-center gap-2">
                 {expenseViewMode === "list" ? (
                   <button
@@ -1135,9 +1139,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm text-forest-700/80">
-                Read-only summary. Press Edit to make changes.
-              </p>
+              <p className="text-sm text-forest-600">Where your monthly budget is going.</p>
               <div className="overflow-hidden rounded-xl border border-forest-100 bg-paper/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]">
                 <ul className="divide-y divide-forest-100/90">
                   {visibleExpenses.map(({ expense, index }, expenseIndex) => (
@@ -1183,9 +1185,12 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           </div>
         </section>
 
-        <section className="card space-y-4 p-6">
+        <section className="section-card">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold">Investments</h2>
+            <div>
+              <p className="eyebrow">Build wealth</p>
+              <h2 className="mt-2 text-2xl font-semibold">Investments</h2>
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
@@ -1318,9 +1323,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm text-forest-700/80">
-                Read-only summary. Press Edit to make changes.
-              </p>
+              <p className="text-sm text-forest-600">Contributions toward your longer-term goals.</p>
               <div className="overflow-hidden rounded-xl border border-forest-100 bg-paper/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]">
                 <ul className="divide-y divide-forest-100/90">
                   <li className="flex items-center justify-between gap-4 px-4 py-3">

@@ -15,22 +15,28 @@ const config: Config = {
         display: ["var(--font-serif)", ...defaultTheme.fontFamily.serif]
       },
       colors: {
-        paper: "#f7f5f2",
+        paper: "rgb(var(--color-paper) / <alpha-value>)",
+        white: "rgb(var(--color-surface) / <alpha-value>)",
         forest: {
-          50: "#eef6f2",
-          100: "#d8ebdf",
-          200: "#b5d7c2",
-          300: "#8dbf9f",
-          400: "#5ea17a",
-          500: "#39885f",
-          600: "#266d49",
-          700: "#1c5639",
-          800: "#10492f",
-          900: "#06402b"
+          50: "rgb(var(--color-forest-50) / <alpha-value>)",
+          100: "rgb(var(--color-forest-100) / <alpha-value>)",
+          200: "rgb(var(--color-forest-200) / <alpha-value>)",
+          300: "rgb(var(--color-forest-300) / <alpha-value>)",
+          400: "rgb(var(--color-forest-400) / <alpha-value>)",
+          500: "rgb(var(--color-forest-500) / <alpha-value>)",
+          600: "rgb(var(--color-forest-600) / <alpha-value>)",
+          700: "rgb(var(--color-forest-700) / <alpha-value>)",
+          800: "rgb(var(--color-forest-800) / <alpha-value>)",
+          900: "rgb(var(--color-forest-900) / <alpha-value>)"
+        },
+        wealth: {
+          400: "rgb(var(--color-wealth-400) / <alpha-value>)",
+          500: "rgb(var(--color-wealth-500) / <alpha-value>)",
+          600: "rgb(var(--color-wealth-600) / <alpha-value>)"
         }
       },
       boxShadow: {
-        card: "0 14px 30px rgba(6, 64, 43, 0.08)"
+        card: "var(--shadow-card)"
       }
     }
   },
