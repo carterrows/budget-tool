@@ -398,6 +398,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
 
   const safeDispatch = (action: Action) => {
     setHasPendingEdits(true);
+    setSaveStatus("saving");
     dispatch(action);
   };
 
@@ -462,8 +463,6 @@ export default function BudgetApp({ username }: BudgetAppProps) {
     if (!initialized || !hasPendingEdits) {
       return;
     }
-
-    setSaveStatus("saving");
 
     const timeout = window.setTimeout(async () => {
       try {
@@ -622,10 +621,16 @@ export default function BudgetApp({ username }: BudgetAppProps) {
       ? sortedExpenses
       : sortedExpenses.slice(0, EXPENSES_PREVIEW_COUNT);
   useEffect(() => {
-    if (expenseViewMode === "edit" || (!hasMoreExpensesThanPreview && showAllExpenses)) {
+    if (expenseViewMode !== "edit" && (hasMoreExpensesThanPreview || !showAllExpenses)) {
+      return;
+    }
+
+    const resetTimer = window.setTimeout(() => {
       setIsExpenseChartOpen(false);
       setShowAllExpenses(false);
-    }
+    }, 0);
+
+    return () => window.clearTimeout(resetTimer);
   }, [expenseViewMode, hasMoreExpensesThanPreview, showAllExpenses]);
   const expenseChart = useMemo(() => {
     const slices = state.expenses
@@ -648,17 +653,19 @@ export default function BudgetApp({ username }: BudgetAppProps) {
       }));
 
     const totalMonthlyExpenses = slices.reduce((sum, slice) => sum + slice.monthlyAmount, 0);
-    let cursor = 0;
-
-    const slicesWithPercent = slices.map((slice) => {
-      const percentage = totalMonthlyExpenses > 0 ? (slice.monthlyAmount / totalMonthlyExpenses) * 100 : 0;
-      const start = cursor;
-      cursor += percentage;
+    const percentages = slices.map((slice) =>
+      totalMonthlyExpenses > 0 ? (slice.monthlyAmount / totalMonthlyExpenses) * 100 : 0
+    );
+    const slicesWithPercent = slices.map((slice, sliceIndex) => {
+      const percentage = percentages[sliceIndex] ?? 0;
+      const start = percentages
+        .slice(0, sliceIndex)
+        .reduce((sum, slicePercentage) => sum + slicePercentage, 0);
       return {
         ...slice,
         percentage,
         start,
-        end: cursor
+        end: start + percentage
       };
     });
 
@@ -778,12 +785,12 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           <span className="app-mark" aria-hidden="true">B</span>
           <div>
             <p className="font-display text-lg font-semibold leading-none">Budget</p>
-            <p className="mt-1 text-xs text-forest-600">Personal finance, simplified</p>
+              <p className="mt-1 text-xs text-forest-600">{username} · Personal finance</p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-          <ThemeToggle compact />
+          <ThemeToggle />
           {statusLabel ? (
             <p className="tabular-nums inline-flex items-center gap-2 px-2 text-xs font-semibold text-forest-600">
               <span className={`h-1.5 w-1.5 rounded-full ${saveStatus === "error" ? "bg-rose-500" : "bg-wealth-500"}`} />
@@ -793,7 +800,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           <button
             type="button"
             onClick={() => router.push("/plans")}
-            className="btn-secondary px-3 py-2 text-sm font-medium"
+            className="btn-green px-3 py-2 text-sm font-medium"
           >
             Switch Plan
           </button>
@@ -801,7 +808,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             type="button"
             disabled={isLoggingOut}
             onClick={logout}
-            className="btn-secondary px-3 py-2 text-sm font-medium"
+            className="btn-green px-3 py-2 text-sm font-medium"
           >
             {isLoggingOut ? "Logging out..." : "Logout"}
           </button>
@@ -828,24 +835,21 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           </div>
 
           <div className="grid w-full gap-3 sm:grid-cols-3 xl:max-w-3xl">
-            <div className="metric-tile">
+            <div className="metric-tile metric-tile-income">
               <p className="text-xs font-semibold text-forest-600">Net income</p>
               <p className="tabular-nums mt-2 text-xl font-semibold text-forest-900">{cad.format(totals.monthlyIncome)}</p>
             </div>
-            <div className="metric-tile">
+            <div className="metric-tile metric-tile-expenses">
               <p className="text-xs font-semibold text-forest-600">Expenses</p>
               <p className="tabular-nums mt-2 text-xl font-semibold text-forest-900">{cad.format(totals.totalExpenses)}</p>
             </div>
             <button
               type="button"
               onClick={() => setIsSummaryHelpOpen(true)}
-              className="metric-tile text-left transition hover:-translate-y-0.5 hover:border-wealth-500/60"
+              className="metric-tile metric-tile-investments text-left transition hover:-translate-y-0.5 hover:border-wealth-500/60"
               aria-label="Open expanded monthly summary"
             >
-              <p className="flex items-center justify-between text-xs font-semibold text-forest-600">
-                Investments
-                <span aria-hidden="true">↗</span>
-              </p>
+              <p className="text-xs font-semibold text-forest-600">Investments</p>
               <p className="tabular-nums mt-2 text-xl font-semibold text-forest-900">{cad.format(totals.totalInvestments)}</p>
             </button>
           </div>
@@ -854,7 +858,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
 
       <div className="grid items-start gap-6 xl:grid-cols-3">
         <div className="space-y-6">
-          <section className="section-card">
+          <section className="section-card section-card-income">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="eyebrow">Cash in</p>
@@ -975,7 +979,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                 </div>
               </div>
             )}
-            <div className="rounded-xl border border-forest-200/80 bg-paper/55 p-4">
+            <div className="section-total rounded-xl border border-forest-200/80 bg-paper/55 p-4">
               <p className="caps-label text-xs font-semibold uppercase text-forest-600">
                 Yearly Net Income (After Tax + Deductions)
               </p>
@@ -987,7 +991,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
 
         </div>
 
-        <section className="section-card">
+        <section className="section-card section-card-expenses">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="eyebrow">Cash out</p>
@@ -1175,7 +1179,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
               ) : null}
             </div>
           )}
-          <div className="rounded-xl border border-forest-200/80 bg-paper/55 p-4">
+          <div className="section-total rounded-xl border border-forest-200/80 bg-paper/55 p-4">
             <p className="caps-label text-xs font-semibold uppercase text-forest-600">
               Total Expenses (Monthly Equivalent)
             </p>
@@ -1185,7 +1189,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           </div>
         </section>
 
-        <section className="section-card">
+        <section className="section-card section-card-investments">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="eyebrow">Build wealth</p>
@@ -1382,7 +1386,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
               </div>
             </div>
           )}
-          <div className="rounded-xl border border-forest-200/80 bg-paper/55 p-4">
+          <div className="section-total rounded-xl border border-forest-200/80 bg-paper/55 p-4">
             <p className="caps-label text-xs font-semibold uppercase text-forest-600">
               Total Investments (Monthly Equivalent)
             </p>

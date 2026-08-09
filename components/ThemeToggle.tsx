@@ -1,45 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
-type ThemePreference = "system" | "light" | "dark";
+type ResolvedTheme = "light" | "dark";
 
 const THEME_STORAGE_KEY = "budget-theme";
 
-const isThemePreference = (value: string | null): value is ThemePreference =>
-  value === "system" || value === "light" || value === "dark";
+const getDocumentTheme = (): ResolvedTheme =>
+  document.documentElement.dataset.theme === "light" ? "light" : "dark";
 
-const resolveTheme = (preference: ThemePreference): "light" | "dark" => {
-  if (preference !== "system") {
-    return preference;
-  }
-
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-    return "dark";
-  }
-
-  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+const applyTheme = (theme: ResolvedTheme) => {
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = theme;
 };
 
-const applyTheme = (preference: ThemePreference) => {
-  const resolvedTheme = resolveTheme(preference);
-  document.documentElement.dataset.theme = resolvedTheme;
-  document.documentElement.style.colorScheme = resolvedTheme;
-};
-
-export default function ThemeToggle({ compact = false }: { compact?: boolean }) {
-  const [preference, setPreference] = useState<ThemePreference>("system");
-
+export default function ThemeToggle() {
   useEffect(() => {
-    const storedPreference = window.localStorage.getItem(THEME_STORAGE_KEY);
-    const initialPreference = isThemePreference(storedPreference) ? storedPreference : "system";
-    setPreference(initialPreference);
-    applyTheme(initialPreference);
-
     const mediaQuery = window.matchMedia?.("(prefers-color-scheme: light)");
     const handleSystemThemeChange = () => {
-      if ((window.localStorage.getItem(THEME_STORAGE_KEY) ?? "system") === "system") {
-        applyTheme("system");
+      const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+      if (savedTheme !== "light" && savedTheme !== "dark") {
+        const nextTheme = mediaQuery?.matches ? "light" : "dark";
+        applyTheme(nextTheme);
       }
     };
 
@@ -47,33 +29,22 @@ export default function ThemeToggle({ compact = false }: { compact?: boolean }) 
     return () => mediaQuery?.removeEventListener("change", handleSystemThemeChange);
   }, []);
 
-  const chooseTheme = (nextPreference: ThemePreference) => {
-    setPreference(nextPreference);
-    if (nextPreference === "system") {
-      window.localStorage.removeItem(THEME_STORAGE_KEY);
-    } else {
-      window.localStorage.setItem(THEME_STORAGE_KEY, nextPreference);
-    }
-    applyTheme(nextPreference);
+  const toggleTheme = () => {
+    const nextTheme = getDocumentTheme() === "dark" ? "light" : "dark";
+    window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    applyTheme(nextTheme);
   };
 
   return (
-    <div
-      className={`theme-toggle ${compact ? "theme-toggle-compact" : ""}`}
-      aria-label="Colour theme"
-      role="group"
+    <button
+      type="button"
+      onClick={toggleTheme}
+      className="theme-toggle"
+      aria-label="Toggle light and dark mode"
+      title="Toggle light and dark mode"
     >
-      {(["system", "light", "dark"] as const).map((option) => (
-        <button
-          key={option}
-          type="button"
-          onClick={() => chooseTheme(option)}
-          aria-pressed={preference === option}
-          className="theme-toggle-option"
-        >
-          {option === "system" ? "Auto" : option === "light" ? "Light" : "Dark"}
-        </button>
-      ))}
-    </div>
+      <span aria-hidden="true" className="theme-toggle-icon theme-toggle-sun">☀</span>
+      <span aria-hidden="true" className="theme-toggle-icon theme-toggle-moon">☾</span>
+    </button>
   );
 }

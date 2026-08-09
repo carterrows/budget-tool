@@ -69,9 +69,11 @@
   body {
     @apply font-sans text-forest-900;
     background:
-      radial-gradient(circle at 8% -12%, rgb(var(--color-wealth-500) / 0.12), transparent 30rem),
-      radial-gradient(circle at 92% 2%, rgb(var(--color-forest-400) / 0.1), transparent 34rem),
-      rgb(var(--color-paper));
+      radial-gradient(circle at -4% 5%, rgb(var(--color-wealth-500) / 0.15), transparent 34rem),
+      radial-gradient(circle at 104% 30%, rgb(var(--color-wealth-400) / 0.1), transparent 38rem),
+      radial-gradient(circle at 18% 105%, rgb(var(--color-forest-400) / 0.1), transparent 42rem),
+      linear-gradient(135deg, rgb(var(--color-paper)) 0%, rgb(var(--color-forest-50) / 0.72) 48%, rgb(var(--color-paper)) 100%);
+    background-attachment: fixed;
     line-height: 1.55;
     letter-spacing: -0.004em;
     font-kerning: normal;
@@ -149,6 +151,22 @@
     transform: translateY(0);
   }
 
+  .btn-green {
+    @apply inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wealth-500 focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:cursor-not-allowed disabled:opacity-50;
+    color: #062113;
+    background: linear-gradient(135deg, rgb(var(--color-wealth-400)), rgb(var(--color-wealth-500)));
+    box-shadow: 0 8px 22px rgb(var(--color-wealth-500) / 0.2);
+  }
+
+  .btn-green:hover {
+    background: linear-gradient(135deg, #6ff0a5, rgb(var(--color-wealth-400)));
+    transform: translateY(-1px);
+  }
+
+  .btn-green:active {
+    transform: translateY(0);
+  }
+
   .btn-secondary {
     @apply inline-flex items-center justify-center rounded-full border border-forest-200 bg-white px-4 py-2.5 text-sm font-semibold text-forest-800 transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wealth-500 focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:cursor-not-allowed disabled:opacity-50;
   }
@@ -187,30 +205,120 @@
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
   }
 
+  .metric-tile-income {
+    border-color: rgb(var(--color-wealth-500) / 0.42);
+    background:
+      radial-gradient(circle at 100% 0%, rgb(var(--color-wealth-400) / 0.28), transparent 8rem),
+      linear-gradient(145deg, rgb(var(--color-wealth-500) / 0.19), rgb(var(--color-surface) / 0.9));
+  }
+
+  .metric-tile-expenses {
+    border-color: rgb(244 114 120 / 0.38);
+    background:
+      radial-gradient(circle at 100% 0%, rgb(251 113 133 / 0.18), transparent 8rem),
+      linear-gradient(145deg, rgb(244 63 94 / 0.13), rgb(var(--color-surface) / 0.92));
+  }
+
+  .metric-tile-investments {
+    border-color: rgb(var(--color-wealth-500) / 0.3);
+    background:
+      radial-gradient(circle at 100% 0%, rgb(var(--color-wealth-400) / 0.2), transparent 8rem),
+      linear-gradient(145deg, rgb(var(--color-surface)), rgb(var(--color-forest-50)));
+  }
+
   .section-card {
     @apply card space-y-5 p-5 md:p-6;
+    position: relative;
+    overflow: hidden;
     min-width: 0;
   }
 
+  .section-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgb(var(--color-wealth-500)), transparent 72%);
+  }
+
+  .section-card::after {
+    content: "";
+    position: absolute;
+    top: -8rem;
+    right: -8rem;
+    z-index: 0;
+    width: 18rem;
+    height: 18rem;
+    border-radius: 999px;
+    background: rgb(var(--color-wealth-500) / 0.1);
+    filter: blur(20px);
+    pointer-events: none;
+  }
+
+  .section-card > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .section-card-income {
+    background: linear-gradient(145deg, rgb(var(--color-surface)) 48%, rgb(var(--color-wealth-500) / 0.1));
+  }
+
+  .section-card-expenses {
+    background: linear-gradient(145deg, rgb(var(--color-surface)) 50%, rgb(244 63 94 / 0.06));
+  }
+
+  .section-card-expenses::before {
+    background: linear-gradient(90deg, rgb(251 113 133 / 0.85), rgb(var(--color-wealth-500) / 0.4), transparent 82%);
+  }
+
+  .section-card-expenses::after {
+    background: rgb(251 113 133 / 0.07);
+  }
+
+  .section-card-investments {
+    background: linear-gradient(145deg, rgb(var(--color-surface)) 46%, rgb(var(--color-wealth-400) / 0.11));
+  }
+
+  .section-card-investments::before {
+    background: linear-gradient(90deg, rgb(var(--color-wealth-400)), rgb(214 180 75 / 0.65), transparent 82%);
+  }
+
+  .section-total {
+    overflow: hidden;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+  }
+
+  .section-card-income .section-total {
+    border-color: rgb(var(--color-wealth-500) / 0.35);
+    background: linear-gradient(135deg, rgb(var(--color-wealth-500) / 0.14), rgb(var(--color-paper) / 0.8));
+  }
+
+  .section-card-expenses .section-total {
+    border-color: rgb(251 113 133 / 0.3);
+    background: linear-gradient(135deg, rgb(244 63 94 / 0.1), rgb(var(--color-paper) / 0.82));
+  }
+
+  .section-card-investments .section-total {
+    border-color: rgb(var(--color-wealth-400) / 0.34);
+    background: linear-gradient(135deg, rgb(var(--color-wealth-400) / 0.13), rgb(var(--color-paper) / 0.82));
+  }
+
   .theme-toggle {
-    @apply inline-flex items-center gap-1 rounded-full border border-forest-200 bg-white p-1 shadow-sm;
+    @apply inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full border border-forest-200 bg-white text-forest-800 shadow-sm transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wealth-500 focus-visible:ring-offset-2 focus-visible:ring-offset-paper;
   }
 
-  .theme-toggle-option {
-    @apply rounded-full px-3 py-1.5 text-xs font-semibold text-forest-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wealth-500;
+  .theme-toggle:hover {
+    @apply border-forest-300 bg-forest-50 text-forest-900;
+    transform: translateY(-1px) rotate(8deg);
   }
 
-  .theme-toggle-option:hover {
-    @apply text-forest-900;
-  }
-
-  .theme-toggle-option[aria-pressed="true"] {
-    color: rgb(var(--color-action-ink));
-    background: rgb(var(--color-action));
-  }
-
-  .theme-toggle-compact .theme-toggle-option {
-    @apply px-2.5;
+  .theme-toggle-icon {
+    display: none;
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    line-height: 1;
   }
 
   .login-shell {
@@ -270,15 +378,16 @@
   color: rgb(251 113 133);
 }
 
+:root[data-theme="dark"] .theme-toggle-sun,
+:root[data-theme="light"] .theme-toggle-moon {
+  display: inline-block;
+}
+
 :root[data-theme="dark"] .text-amber-700 {
   color: rgb(251 191 36);
 }
 
 @media (max-width: 520px) {
-  .theme-toggle-option {
-    padding-inline: 0.65rem;
-  }
-
   .login-shell {
     min-height: 0;
     border-radius: 1.5rem;

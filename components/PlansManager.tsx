@@ -178,7 +178,11 @@ export default function PlansManager({ username }: PlansManagerProps) {
   }, [router]);
 
   useEffect(() => {
-    void loadPlans();
+    const loadTimer = window.setTimeout(() => {
+      void loadPlans();
+    }, 0);
+
+    return () => window.clearTimeout(loadTimer);
   }, [loadPlans]);
 
   const setPlanStateLoading = (planId: number, loadingForPlan: boolean) => {
@@ -607,7 +611,7 @@ export default function PlansManager({ username }: PlansManagerProps) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <ThemeToggle compact />
+            <ThemeToggle />
             <button
               type="button"
               onClick={() => router.push("/budget")}

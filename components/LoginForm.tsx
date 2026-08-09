@@ -120,7 +120,7 @@ export default function LoginForm({ allowSignup, allowDevLogin }: LoginFormProps
 
       <div className="relative flex flex-col justify-center px-6 py-8 sm:px-10 lg:px-14">
         <div className="absolute right-5 top-5 sm:right-8 sm:top-8">
-          <ThemeToggle compact />
+          <ThemeToggle />
         </div>
 
         <div className="mx-auto w-full max-w-md pt-14 lg:pt-0">
