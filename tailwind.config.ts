@@ -31,8 +31,7 @@ const config: Config = {
         },
         wealth: {
           400: "rgb(var(--color-wealth-400) / <alpha-value>)",
-          500: "rgb(var(--color-wealth-500) / <alpha-value>)",
-          600: "rgb(var(--color-wealth-600) / <alpha-value>)"
+          500: "rgb(var(--color-wealth-500) / <alpha-value>)"
         }
       },
       boxShadow: {
