@@ -199,7 +199,7 @@ const reducer = (state: BudgetState, action: Action): BudgetState => {
   }
 };
 
-type SliderMoneyFieldProps = {
+type MoneyFieldProps = {
   id: string;
   label: string;
   value: number;
@@ -208,38 +208,27 @@ type SliderMoneyFieldProps = {
   labelAccessory?: ReactNode;
 };
 
-function SliderMoneyField({
+function MoneyField({
   id,
   label,
   value,
   max,
   onChange,
   labelAccessory
-}: SliderMoneyFieldProps) {
+}: MoneyFieldProps) {
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <label htmlFor={id} className="text-sm font-medium text-forest-800">
-          {label}
-        </label>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <label htmlFor={id} className="text-sm font-medium text-forest-800">
+        {label}
+      </label>
+      <div className="flex flex-wrap items-center justify-end gap-3">
         {labelAccessory}
-      </div>
-      <div className="grid gap-3 md:grid-cols-[1fr_140px]">
-        <input
-          id={id}
-          type="range"
-          min={0}
-          max={max}
-          step={1}
-          value={value}
-          onChange={(event) => onChange(toNumber(event.target.value))}
-          className="w-full accent-forest-700"
-        />
-        <div className="relative">
+        <div className="relative w-[140px]">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
             $
           </span>
           <input
+            id={id}
             type="number"
             min={0}
             max={max}
@@ -255,7 +244,7 @@ function SliderMoneyField({
   );
 }
 
-type SliderPercentFieldProps = {
+type PercentFieldProps = {
   id: string;
   label: string;
   value: number;
@@ -263,38 +252,27 @@ type SliderPercentFieldProps = {
   onChange: (value: number) => void;
 };
 
-function SliderPercentField({ id, label, value, max, onChange }: SliderPercentFieldProps) {
+function PercentField({ id, label, value, max, onChange }: PercentFieldProps) {
   return (
-    <div className="space-y-2">
+    <div className="flex flex-wrap items-center justify-between gap-3">
       <label htmlFor={id} className="text-sm font-medium text-forest-800">
         {label}
       </label>
-      <div className="grid gap-3 md:grid-cols-[1fr_140px]">
+      <div className="relative w-[140px]">
         <input
           id={id}
-          type="range"
+          type="number"
           min={0}
           max={max}
           step={0.1}
           value={value}
           onChange={(event) => onChange(toNumber(event.target.value))}
-          className="w-full accent-forest-700"
+          onFocus={selectInputValueOnFocus}
+          className="input tabular-nums pl-3 pr-8 text-right"
         />
-        <div className="relative">
-          <input
-            type="number"
-            min={0}
-            max={max}
-            step={0.1}
-            value={value}
-            onChange={(event) => onChange(toNumber(event.target.value))}
-            onFocus={selectInputValueOnFocus}
-            className="input tabular-nums pl-3 pr-8 text-right"
-          />
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
-            %
-          </span>
-        </div>
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
+          %
+        </span>
       </div>
     </div>
   );
@@ -897,7 +875,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             </div>
             {incomeViewMode === "edit" ? (
               <>
-                <SliderMoneyField
+                <MoneyField
                   id="yearly-salary"
                   label="Yearly Salary (CAD)"
                   value={state.yearlySalary}
@@ -927,7 +905,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                   </div>
                 </div>
                 {state.bonusType === "amount" ? (
-                  <SliderMoneyField
+                  <MoneyField
                     id="bonus-amount"
                     label="Bonus Amount (CAD)"
                     value={state.bonusValue}
@@ -936,7 +914,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                   />
                 ) : null}
                 {state.bonusType === "percentage" ? (
-                  <SliderPercentField
+                  <PercentField
                     id="bonus-percent"
                     label="Bonus Percentage"
                     value={state.bonusValue}
@@ -1059,9 +1037,10 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                   key={`expense-${index}`}
                   className="rounded-xl border border-forest-100 bg-paper/70 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]"
                 >
-                  <div className="mb-2 flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <input
                       type="text"
+                      aria-label="Expense name"
                       value={expense.name}
                       onChange={(event) =>
                         safeDispatch({
@@ -1071,7 +1050,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                         })
                       }
                       placeholder="Category"
-                      className="input min-w-0 flex-1"
+                      className="input min-w-[180px] flex-1"
                     />
                     <FrequencySelect
                       id={`expense-frequency-${index}`}
@@ -1086,42 +1065,13 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                         })
                       }
                     />
-                    <button
-                      type="button"
-                      onClick={() => safeDispatch({ type: "remove-expense", index })}
-                      disabled={state.expenses.length <= 1}
-                      aria-label="Delete expense"
-                      title="Delete expense"
-                      className="btn-secondary ml-auto h-10 w-10 px-0 py-0 leading-none disabled:opacity-40"
-                    >
-                      <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
-                        delete
-                      </span>
-                    </button>
-                  </div>
-
-                  <div className="grid gap-3 md:grid-cols-[1fr_140px]">
-                    <input
-                      type="range"
-                      min={0}
-                      max={MAX_EXPENSE}
-                      step={1}
-                      value={expense.amount}
-                      onChange={(event) =>
-                        safeDispatch({
-                          type: "set-expense-amount",
-                          index,
-                          amount: toNumber(event.target.value)
-                        })
-                      }
-                      className="w-full accent-forest-700"
-                    />
-                    <div className="relative">
+                    <div className="relative w-[140px]">
                       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
                         $
                       </span>
                       <input
                         type="number"
+                        aria-label={`${expense.name || `Expense ${index + 1}`} amount`}
                         min={0}
                         max={MAX_EXPENSE}
                         step={1}
@@ -1137,6 +1087,18 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                         className="input tabular-nums pl-7 pr-3 text-right"
                       />
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => safeDispatch({ type: "remove-expense", index })}
+                      disabled={state.expenses.length <= 1}
+                      aria-label="Delete expense"
+                      title="Delete expense"
+                      className="btn-secondary ml-auto h-10 w-10 px-0 py-0 leading-none disabled:opacity-40"
+                    >
+                      <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                        delete
+                      </span>
+                    </button>
                   </div>
                 </article>
               ))}
@@ -1232,7 +1194,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           </div>
           {investmentViewMode === "edit" ? (
             <div className="space-y-4">
-              <SliderMoneyField
+              <MoneyField
                 id="tfsa"
                 label="TFSA"
                 value={state.investments.tfsa}
@@ -1255,7 +1217,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                   />
                 }
               />
-              <SliderMoneyField
+              <MoneyField
                 id="fhsa"
                 label="FHSA"
                 value={state.investments.fhsa}
@@ -1278,7 +1240,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                   />
                 }
               />
-              <SliderMoneyField
+              <MoneyField
                 id="rrsp"
                 label="RRSP"
                 value={state.investments.rrsp}
@@ -1301,7 +1263,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                   />
                 }
               />
-              <SliderMoneyField
+              <MoneyField
                 id="emergency-fund"
                 label="Emergency Fund"
                 value={state.investments.emergencyFund}
