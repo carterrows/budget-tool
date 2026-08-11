@@ -111,11 +111,6 @@
     background: rgb(var(--color-wealth-500) / 0.3);
   }
 
-  input[type="range"] {
-    height: 4px;
-    accent-color: rgb(var(--color-wealth-500));
-  }
-
   input[type="number"] {
     -moz-appearance: textfield;
     appearance: textfield;
@@ -127,10 +122,6 @@
     -webkit-appearance: none;
   }
 
-  input[type="range"]:focus-visible {
-    outline: 2px solid rgb(var(--color-wealth-500) / 0.8);
-    outline-offset: 5px;
-  }
 }
 
 @layer components {

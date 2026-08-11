@@ -48,7 +48,6 @@ type Action =
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 type ViewMode = "list" | "edit";
-type ExpenseSortOrder = "asc" | "desc";
 const EXPENSES_PREVIEW_COUNT = 4;
 
 const cad = new Intl.NumberFormat("en-CA", {
@@ -199,7 +198,7 @@ const reducer = (state: BudgetState, action: Action): BudgetState => {
   }
 };
 
-type SliderMoneyFieldProps = {
+type MoneyFieldProps = {
   id: string;
   label: string;
   value: number;
@@ -208,54 +207,58 @@ type SliderMoneyFieldProps = {
   labelAccessory?: ReactNode;
 };
 
-function SliderMoneyField({
+function MoneyField({
   id,
   label,
   value,
   max,
   onChange,
   labelAccessory
-}: SliderMoneyFieldProps) {
-  return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <label htmlFor={id} className="text-sm font-medium text-forest-800">
+}: MoneyFieldProps) {
+  const amountInput = (
+    <div className="relative w-full">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
+        $
+      </span>
+      <input
+        id={id}
+        type="number"
+        min={0}
+        max={max}
+        step={1}
+        value={value}
+        onChange={(event) => onChange(toNumber(event.target.value))}
+        onFocus={selectInputValueOnFocus}
+        className="input tabular-nums pl-7 pr-3 text-right"
+      />
+    </div>
+  );
+
+  if (labelAccessory) {
+    return (
+      <div className="space-y-2">
+        <label htmlFor={id} className="block text-sm font-medium text-forest-800">
           {label}
         </label>
-        {labelAccessory}
-      </div>
-      <div className="grid gap-3 md:grid-cols-[1fr_140px]">
-        <input
-          id={id}
-          type="range"
-          min={0}
-          max={max}
-          step={1}
-          value={value}
-          onChange={(event) => onChange(toNumber(event.target.value))}
-          className="w-full accent-forest-700"
-        />
-        <div className="relative">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
-            $
-          </span>
-          <input
-            type="number"
-            min={0}
-            max={max}
-            step={1}
-            value={value}
-            onChange={(event) => onChange(toNumber(event.target.value))}
-            onFocus={selectInputValueOnFocus}
-            className="input tabular-nums pl-7 pr-3 text-right"
-          />
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(100px,140px)] items-center gap-3">
+          {labelAccessory}
+          {amountInput}
         </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <label htmlFor={id} className="text-sm font-medium text-forest-800">
+        {label}
+      </label>
+      <div className="w-[140px]">{amountInput}</div>
     </div>
   );
 }
 
-type SliderPercentFieldProps = {
+type PercentFieldProps = {
   id: string;
   label: string;
   value: number;
@@ -263,38 +266,27 @@ type SliderPercentFieldProps = {
   onChange: (value: number) => void;
 };
 
-function SliderPercentField({ id, label, value, max, onChange }: SliderPercentFieldProps) {
+function PercentField({ id, label, value, max, onChange }: PercentFieldProps) {
   return (
-    <div className="space-y-2">
+    <div className="flex flex-wrap items-center justify-between gap-3">
       <label htmlFor={id} className="text-sm font-medium text-forest-800">
         {label}
       </label>
-      <div className="grid gap-3 md:grid-cols-[1fr_140px]">
+      <div className="relative w-[140px]">
         <input
           id={id}
-          type="range"
+          type="number"
           min={0}
           max={max}
           step={0.1}
           value={value}
           onChange={(event) => onChange(toNumber(event.target.value))}
-          className="w-full accent-forest-700"
+          onFocus={selectInputValueOnFocus}
+          className="input tabular-nums pl-3 pr-8 text-right"
         />
-        <div className="relative">
-          <input
-            type="number"
-            min={0}
-            max={max}
-            step={0.1}
-            value={value}
-            onChange={(event) => onChange(toNumber(event.target.value))}
-            onFocus={selectInputValueOnFocus}
-            className="input tabular-nums pl-3 pr-8 text-right"
-          />
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
-            %
-          </span>
-        </div>
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
+          %
+        </span>
       </div>
     </div>
   );
@@ -305,22 +297,20 @@ type FrequencySelectProps = {
   value: BudgetFrequency;
   onChange: (value: BudgetFrequency) => void;
   showLabel?: boolean;
-  compact?: boolean;
 };
 
 function FrequencySelect({
   id,
   value,
   onChange,
-  showLabel = true,
-  compact = false
+  showLabel = true
 }: FrequencySelectProps) {
   const control = (
     <select
       id={id}
       value={value}
       onChange={(event) => onChange(event.target.value as BudgetFrequency)}
-      className={`input h-10 py-0 pr-8 ${compact ? "w-auto min-w-[122px] shrink-0" : "min-w-[140px]"}`}
+      className="input h-10 min-w-0 py-0 pl-2 pr-7"
     >
       <option value="monthly">Monthly</option>
       <option value="bi-weekly">Bi-weekly</option>
@@ -392,7 +382,6 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   const [isSummaryHelpOpen, setIsSummaryHelpOpen] = useState(false);
   const [incomeViewMode, setIncomeViewMode] = useState<ViewMode>("list");
   const [expenseViewMode, setExpenseViewMode] = useState<ViewMode>("list");
-  const [expenseSortOrder, setExpenseSortOrder] = useState<ExpenseSortOrder>("desc");
   const [showAllExpenses, setShowAllExpenses] = useState(false);
   const [investmentViewMode, setInvestmentViewMode] = useState<ViewMode>("list");
 
@@ -597,7 +586,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
       }),
     [state.yearlySalary, state.bonusType, state.bonusValue]
   );
-  const sortedExpenses = useMemo(
+  const expensesByAmount = useMemo(
     () =>
       state.expenses
         .map((expense, index) => ({ expense, index }))
@@ -607,19 +596,15 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             return left.index - right.index;
           }
 
-          return expenseSortOrder === "asc" ? amountDiff : -amountDiff;
+          return -amountDiff;
         }),
-    [state.expenses, expenseSortOrder]
-  );
-  const editableExpenses = useMemo(
-    () => state.expenses.map((expense, index) => ({ expense, index })),
     [state.expenses]
   );
-  const hasMoreExpensesThanPreview = sortedExpenses.length > EXPENSES_PREVIEW_COUNT;
+  const hasMoreExpensesThanPreview = expensesByAmount.length > EXPENSES_PREVIEW_COUNT;
   const visibleExpenses =
     showAllExpenses || !hasMoreExpensesThanPreview
-      ? sortedExpenses
-      : sortedExpenses.slice(0, EXPENSES_PREVIEW_COUNT);
+      ? expensesByAmount
+      : expensesByAmount.slice(0, EXPENSES_PREVIEW_COUNT);
   useEffect(() => {
     if (expenseViewMode !== "edit" && (hasMoreExpensesThanPreview || !showAllExpenses)) {
       return;
@@ -897,7 +882,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             </div>
             {incomeViewMode === "edit" ? (
               <>
-                <SliderMoneyField
+                <MoneyField
                   id="yearly-salary"
                   label="Yearly Salary (CAD)"
                   value={state.yearlySalary}
@@ -927,7 +912,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                   </div>
                 </div>
                 {state.bonusType === "amount" ? (
-                  <SliderMoneyField
+                  <MoneyField
                     id="bonus-amount"
                     label="Bonus Amount (CAD)"
                     value={state.bonusValue}
@@ -936,7 +921,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                   />
                 ) : null}
                 {state.bonusType === "percentage" ? (
-                  <SliderPercentField
+                  <PercentField
                     id="bonus-percent"
                     label="Bonus Percentage"
                     value={state.bonusValue}
@@ -1011,25 +996,17 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                     </span>
                   </button>
                 ) : null}
-                <select
-                  id="expense-sort-order"
-                  aria-label="Expense sort order"
-                  value={expenseSortOrder}
-                  onChange={(event) =>
-                    setExpenseSortOrder(event.target.value as ExpenseSortOrder)
-                  }
-                  className="input h-10 w-[96px] min-w-0 py-0 pr-8"
-                >
-                  <option value="desc">desc</option>
-                  <option value="asc">asc</option>
-                </select>
                 {expenseViewMode === "edit" ? (
                   <button
                     type="button"
                     onClick={() => safeDispatch({ type: "add-expense" })}
-                    className="btn-secondary px-3 py-2 text-sm font-medium"
+                    aria-label="Add expense"
+                    title="Add expense"
+                    className="btn-secondary h-10 w-10 px-0 py-0 text-wealth-500"
                   >
-                    + Add expense
+                    <span aria-hidden="true" className="text-[28px] font-light leading-none">
+                      +
+                    </span>
                   </button>
                 ) : null}
                 <button
@@ -1054,88 +1031,75 @@ export default function BudgetApp({ username }: BudgetAppProps) {
 
           {expenseViewMode === "edit" ? (
             <div className="space-y-4">
-              {editableExpenses.map(({ expense, index }) => (
+              {state.expenses.map((expense, index) => (
                 <article
                   key={`expense-${index}`}
-                  className="rounded-xl border border-forest-100 bg-paper/70 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)]"
+                  className="rounded-xl border border-forest-100 bg-paper/70 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)] sm:p-4"
                 >
-                  <div className="mb-2 flex items-center gap-3">
-                    <input
-                      type="text"
-                      value={expense.name}
-                      onChange={(event) =>
-                        safeDispatch({
-                          type: "set-expense-name",
-                          index,
-                          name: event.target.value
-                        })
-                      }
-                      placeholder="Category"
-                      className="input min-w-0 flex-1"
-                    />
-                    <FrequencySelect
-                      id={`expense-frequency-${index}`}
-                      value={expense.frequency}
-                      showLabel={false}
-                      compact
-                      onChange={(frequency) =>
-                        safeDispatch({
-                          type: "set-expense-frequency",
-                          index,
-                          frequency
-                        })
-                      }
-                    />
-                    <button
-                      type="button"
-                      onClick={() => safeDispatch({ type: "remove-expense", index })}
-                      disabled={state.expenses.length <= 1}
-                      aria-label="Delete expense"
-                      title="Delete expense"
-                      className="btn-secondary ml-auto h-10 w-10 px-0 py-0 leading-none disabled:opacity-40"
-                    >
-                      <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
-                        delete
-                      </span>
-                    </button>
-                  </div>
-
-                  <div className="grid gap-3 md:grid-cols-[1fr_140px]">
-                    <input
-                      type="range"
-                      min={0}
-                      max={MAX_EXPENSE}
-                      step={1}
-                      value={expense.amount}
-                      onChange={(event) =>
-                        safeDispatch({
-                          type: "set-expense-amount",
-                          index,
-                          amount: toNumber(event.target.value)
-                        })
-                      }
-                      className="w-full accent-forest-700"
-                    />
-                    <div className="relative">
-                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
-                        $
-                      </span>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-[minmax(0,1fr)_40px] items-center gap-2">
                       <input
-                        type="number"
-                        min={0}
-                        max={MAX_EXPENSE}
-                        step={1}
-                        value={expense.amount}
+                        type="text"
+                        aria-label="Expense name"
+                        value={expense.name}
                         onChange={(event) =>
                           safeDispatch({
-                            type: "set-expense-amount",
+                            type: "set-expense-name",
                             index,
-                            amount: toNumber(event.target.value)
+                            name: event.target.value
                           })
                         }
-                        onFocus={selectInputValueOnFocus}
-                        className="input tabular-nums pl-7 pr-3 text-right"
+                        placeholder="Category"
+                        className="input min-w-0"
                       />
+                      <button
+                        type="button"
+                        onClick={() => safeDispatch({ type: "remove-expense", index })}
+                        disabled={state.expenses.length <= 1}
+                        aria-label="Delete expense"
+                        title="Delete expense"
+                        className="btn-secondary h-10 w-10 border-rose-300 px-0 py-0 leading-none text-rose-700 hover:bg-rose-50 active:bg-rose-100 disabled:opacity-40"
+                      >
+                        <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+                          delete
+                        </span>
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-[minmax(0,1fr)_minmax(100px,140px)] items-center gap-3">
+                      <FrequencySelect
+                        id={`expense-frequency-${index}`}
+                        value={expense.frequency}
+                        showLabel={false}
+                        onChange={(frequency) =>
+                          safeDispatch({
+                            type: "set-expense-frequency",
+                            index,
+                            frequency
+                          })
+                        }
+                      />
+                      <div className="relative w-full">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-forest-700">
+                          $
+                        </span>
+                        <input
+                          type="number"
+                          aria-label={`${expense.name || `Expense ${index + 1}`} amount`}
+                          min={0}
+                          max={MAX_EXPENSE}
+                          step={1}
+                          value={expense.amount}
+                          onChange={(event) =>
+                            safeDispatch({
+                              type: "set-expense-amount",
+                              index,
+                              amount: toNumber(event.target.value)
+                            })
+                          }
+                          onFocus={selectInputValueOnFocus}
+                          className="input tabular-nums pl-7 pr-3 text-right"
+                        />
+                      </div>
                     </div>
                   </div>
                 </article>
@@ -1232,7 +1196,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
           </div>
           {investmentViewMode === "edit" ? (
             <div className="space-y-4">
-              <SliderMoneyField
+              <MoneyField
                 id="tfsa"
                 label="TFSA"
                 value={state.investments.tfsa}
@@ -1255,7 +1219,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                   />
                 }
               />
-              <SliderMoneyField
+              <MoneyField
                 id="fhsa"
                 label="FHSA"
                 value={state.investments.fhsa}
@@ -1278,7 +1242,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                   />
                 }
               />
-              <SliderMoneyField
+              <MoneyField
                 id="rrsp"
                 label="RRSP"
                 value={state.investments.rrsp}
@@ -1301,7 +1265,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                   />
                 }
               />
-              <SliderMoneyField
+              <MoneyField
                 id="emergency-fund"
                 label="Emergency Fund"
                 value={state.investments.emergencyFund}
