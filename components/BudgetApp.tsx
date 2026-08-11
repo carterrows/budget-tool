@@ -48,7 +48,6 @@ type Action =
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 type ViewMode = "list" | "edit";
-type ExpenseSortOrder = "asc" | "desc";
 const EXPENSES_PREVIEW_COUNT = 4;
 
 const cad = new Intl.NumberFormat("en-CA", {
@@ -383,7 +382,6 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   const [isSummaryHelpOpen, setIsSummaryHelpOpen] = useState(false);
   const [incomeViewMode, setIncomeViewMode] = useState<ViewMode>("list");
   const [expenseViewMode, setExpenseViewMode] = useState<ViewMode>("list");
-  const [expenseSortOrder, setExpenseSortOrder] = useState<ExpenseSortOrder>("desc");
   const [showAllExpenses, setShowAllExpenses] = useState(false);
   const [investmentViewMode, setInvestmentViewMode] = useState<ViewMode>("list");
 
@@ -588,7 +586,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
       }),
     [state.yearlySalary, state.bonusType, state.bonusValue]
   );
-  const sortedExpenses = useMemo(
+  const expensesByAmount = useMemo(
     () =>
       state.expenses
         .map((expense, index) => ({ expense, index }))
@@ -598,19 +596,15 @@ export default function BudgetApp({ username }: BudgetAppProps) {
             return left.index - right.index;
           }
 
-          return expenseSortOrder === "asc" ? amountDiff : -amountDiff;
+          return -amountDiff;
         }),
-    [state.expenses, expenseSortOrder]
-  );
-  const editableExpenses = useMemo(
-    () => state.expenses.map((expense, index) => ({ expense, index })),
     [state.expenses]
   );
-  const hasMoreExpensesThanPreview = sortedExpenses.length > EXPENSES_PREVIEW_COUNT;
+  const hasMoreExpensesThanPreview = expensesByAmount.length > EXPENSES_PREVIEW_COUNT;
   const visibleExpenses =
     showAllExpenses || !hasMoreExpensesThanPreview
-      ? sortedExpenses
-      : sortedExpenses.slice(0, EXPENSES_PREVIEW_COUNT);
+      ? expensesByAmount
+      : expensesByAmount.slice(0, EXPENSES_PREVIEW_COUNT);
   useEffect(() => {
     if (expenseViewMode !== "edit" && (hasMoreExpensesThanPreview || !showAllExpenses)) {
       return;
@@ -1002,25 +996,17 @@ export default function BudgetApp({ username }: BudgetAppProps) {
                     </span>
                   </button>
                 ) : null}
-                <select
-                  id="expense-sort-order"
-                  aria-label="Expense sort order"
-                  value={expenseSortOrder}
-                  onChange={(event) =>
-                    setExpenseSortOrder(event.target.value as ExpenseSortOrder)
-                  }
-                  className="input h-10 w-[96px] min-w-0 py-0 pr-8"
-                >
-                  <option value="desc">desc</option>
-                  <option value="asc">asc</option>
-                </select>
                 {expenseViewMode === "edit" ? (
                   <button
                     type="button"
                     onClick={() => safeDispatch({ type: "add-expense" })}
-                    className="btn-secondary px-3 py-2 text-sm font-medium"
+                    aria-label="Add expense"
+                    title="Add expense"
+                    className="btn-secondary h-10 w-10 px-0 py-0 text-wealth-500"
                   >
-                    + Add expense
+                    <span aria-hidden="true" className="text-[28px] font-light leading-none">
+                      +
+                    </span>
                   </button>
                 ) : null}
                 <button
@@ -1045,7 +1031,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
 
           {expenseViewMode === "edit" ? (
             <div className="space-y-4">
-              {editableExpenses.map(({ expense, index }) => (
+              {state.expenses.map((expense, index) => (
                 <article
                   key={`expense-${index}`}
                   className="rounded-xl border border-forest-100 bg-paper/70 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.58)] sm:p-4"
