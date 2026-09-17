@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.mjs";
 
 :root,
 :root[data-theme="light"] {
@@ -223,7 +222,7 @@
   }
 
   .section-card {
-    @apply card space-y-5 p-5 md:p-6;
+    @apply space-y-5 rounded-[24px] border border-forest-200/75 bg-white/95 p-5 shadow-card md:p-6;
     min-width: 0;
   }
 
