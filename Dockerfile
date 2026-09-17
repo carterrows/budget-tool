@@ -1,4 +1,4 @@
-FROM node:24-alpine AS base
+FROM node:24.21.0-alpine3.24 AS base
 
 FROM base AS deps
 WORKDIR /app
@@ -14,7 +14,7 @@ COPY . .
 RUN npm run build
 RUN npm prune --omit=dev
 
-FROM node:24-alpine AS runner
+FROM node:24.21.0-alpine3.24 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=4050
