@@ -26,3 +26,5 @@ services:
 
 volumes:
   budget_data:
+    external: true
+    name: budget-tool_budget_data
