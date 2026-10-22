@@ -24,12 +24,21 @@ The app supports up to 3 budget plans per user and keeps user state isolated by 
 - Ontario 2026 income tax/deduction model used for monthly net income.
 
 ## Tech Stack
-- Next.js 16 App Router (single service)
+- Next.js 16.4.2 App Router (single service)
 - React 19 + TypeScript
 - Tailwind CSS
 - SQLite via `better-sqlite3`
 - `bcryptjs` password hashing
 - Cookie sessions (`HttpOnly`, `SameSite=Lax`)
+
+## Rendering and Navigation
+
+Cache Components and partial prefetching reuse the layout and page loading shells.
+The Next.js 16.4 `ensureStatic = "prefetch"` guarantee and `navigation()` boundaries
+keep session checks and personalized UI out of prefetches; authentication still
+runs on navigation. Budget and plan data remain uncached behind the existing
+`no-store` APIs. Returning to the budget reloads the active plan before autosave
+can resume, including when Next.js restores a retained route.
 
 ## Local Development
 1. Install dependencies:

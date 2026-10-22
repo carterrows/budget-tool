@@ -6,7 +6,6 @@ import {
 } from "@/lib/auth";
 import { hasValidOrigin } from "@/lib/csrf";
 
-export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   if (!hasValidOrigin(request)) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -612,13 +613,9 @@ export default function PlansManager({ username }: PlansManagerProps) {
 
           <div className="flex flex-wrap items-center gap-2">
             <ThemeToggle />
-            <button
-              type="button"
-              onClick={() => router.push("/budget")}
-              className="btn-secondary px-3 py-2 text-sm font-medium"
-            >
+            <Link href="/budget" className="btn-secondary px-3 py-2 text-sm font-medium">
               Back to Budget
-            </button>
+            </Link>
             <button
               type="button"
               disabled={isAtPlanLimit || pendingAction !== null}

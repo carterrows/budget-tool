@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { sourceSans, sourceSerif } from "./fonts";
 import "./globals.css";
 
+// Prefetch only reusable shells; resolve sessions when navigation begins.
+export const ensureStatic = "prefetch";
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,

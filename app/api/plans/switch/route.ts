@@ -8,8 +8,6 @@ import {
   switchActivePlanForSession
 } from "@/lib/plans";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 type SwitchPlanBody = {
   planId?: unknown;

@@ -8,7 +8,6 @@ import {
 import { hasValidOrigin } from "@/lib/csrf";
 import { getDb } from "@/lib/db";
 
-export const runtime = "nodejs";
 
 type SignupBody = {
   username?: string;

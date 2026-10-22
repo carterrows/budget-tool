@@ -1,8 +1,11 @@
+import { Suspense } from "react";
+import { navigation } from "next/cache";
 import { redirect } from "next/navigation";
 import PlansManager from "@/components/PlansManager";
 import { getCurrentUser } from "@/lib/auth";
 
-export default async function PlansPage() {
+async function PlansContent() {
+  await navigation();
   const user = await getCurrentUser();
 
   if (!user) {
@@ -10,8 +13,16 @@ export default async function PlansPage() {
   }
 
   return (
+    <PlansManager username={user.username} />
+  );
+}
+
+export default function PlansPage() {
+  return (
     <main className="mx-auto min-h-screen w-full max-w-[1280px] px-4 py-5 sm:px-6 md:py-8 lg:px-8">
-      <PlansManager username={user.username} />
+      <Suspense fallback={<p role="status" className="text-sm text-forest-600">Loading plans...</p>}>
+        <PlansContent />
+      </Suspense>
     </main>
   );
 }

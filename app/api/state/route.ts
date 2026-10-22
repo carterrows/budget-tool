@@ -3,8 +3,6 @@ import { getCurrentSession } from "@/lib/auth";
 import { hasValidOrigin } from "@/lib/csrf";
 import { PlanOperationError, getActivePlanForSession, loadPlanState, savePlanState } from "@/lib/plans";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 export async function GET() {
   const session = await getCurrentSession();
