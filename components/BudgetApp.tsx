@@ -6,8 +6,10 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
   useState
 } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -374,6 +376,7 @@ export default function BudgetApp({ username }: BudgetAppProps) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [hasPendingEdits, setHasPendingEdits] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const stateReadyForSave = useRef(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [activePlan, setActivePlan] = useState<ActivePlanMeta | null>(null);
   const [isIncomeHelpOpen, setIsIncomeHelpOpen] = useState(false);
@@ -393,6 +396,8 @@ export default function BudgetApp({ username }: BudgetAppProps) {
 
   useEffect(() => {
     let active = true;
+    // Activity restores effects with old state: reload the session's active plan first.
+    stateReadyForSave.current = false;
 
     const loadState = async () => {
       try {
@@ -425,6 +430,8 @@ export default function BudgetApp({ username }: BudgetAppProps) {
         });
         setActivePlan(payload.activePlan ?? null);
         setHasPendingEdits(false);
+        setSaveStatus("idle");
+        stateReadyForSave.current = true;
         setInitialized(true);
       } catch (error) {
         if (!active) {
@@ -445,11 +452,12 @@ export default function BudgetApp({ username }: BudgetAppProps) {
 
     return () => {
       active = false;
+      stateReadyForSave.current = false;
     };
   }, [router]);
 
   useEffect(() => {
-    if (!initialized || !hasPendingEdits) {
+    if (!stateReadyForSave.current || !initialized || !hasPendingEdits) {
       return;
     }
 
@@ -782,13 +790,9 @@ export default function BudgetApp({ username }: BudgetAppProps) {
               {statusLabel}
             </p>
           ) : null}
-          <button
-            type="button"
-            onClick={() => router.push("/plans")}
-            className="btn-green px-3 py-2 text-sm font-medium"
-          >
+          <Link href="/plans" className="btn-green px-3 py-2 text-sm font-medium">
             Switch Plan
-          </button>
+          </Link>
           <button
             type="button"
             disabled={isLoggingOut}

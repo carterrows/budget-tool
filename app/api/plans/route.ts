@@ -8,8 +8,6 @@ import {
   listPlansForSession
 } from "@/lib/plans";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 const mapPlanErrorToStatus = (errorCode: PlanOperationError["code"]) => {
   if (errorCode === "PLAN_LIMIT_REACHED" || errorCode === "LAST_PLAN_DELETE_BLOCKED") {

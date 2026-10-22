@@ -8,8 +8,6 @@ import {
   renamePlanForSession
 } from "@/lib/plans";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 const toPlanId = (value: string): number | null => {
   const parsed = Number(value);
